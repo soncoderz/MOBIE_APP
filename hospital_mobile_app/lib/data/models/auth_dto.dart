@@ -35,7 +35,7 @@ class RegisterDto {
       'email': email,
       'password': password,
       'fullName': fullName,
-      if (phone != null) 'phone': phone,
+      if (phone != null) 'phoneNumber': phone,
     };
   }
 }

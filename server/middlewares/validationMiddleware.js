@@ -7,7 +7,7 @@ const validator = require('validator');
 // Xác thực họ tên
 exports.validateFullName = (req, res, next) => {
   const { fullName } = req.body;
-  
+
   if (!fullName) {
     return res.status(400).json({
       success: false,
@@ -15,9 +15,9 @@ exports.validateFullName = (req, res, next) => {
       message: 'Họ và tên là bắt buộc'
     });
   }
-  
+
   const trimmedName = fullName.trim();
-  
+
   if (trimmedName.length < 2) {
     return res.status(400).json({
       success: false,
@@ -25,7 +25,7 @@ exports.validateFullName = (req, res, next) => {
       message: 'Họ và tên phải có ít nhất 2 ký tự'
     });
   }
-  
+
   if (trimmedName.length > 100) {
     return res.status(400).json({
       success: false,
@@ -33,17 +33,17 @@ exports.validateFullName = (req, res, next) => {
       message: 'Họ và tên không được vượt quá 100 ký tự'
     });
   }
-  
+
   // Gán giá trị đã trim vào request body
   req.body.fullName = trimmedName;
-  
+
   next();
 };
 
 // Xác thực email
 exports.validateEmail = (req, res, next) => {
   const { email } = req.body;
-  
+
   if (!email) {
     return res.status(400).json({
       success: false,
@@ -51,9 +51,9 @@ exports.validateEmail = (req, res, next) => {
       message: 'Email là bắt buộc'
     });
   }
-  
+
   const trimmedEmail = email.trim().toLowerCase();
-  
+
   if (!validator.isEmail(trimmedEmail)) {
     return res.status(400).json({
       success: false,
@@ -61,25 +61,25 @@ exports.validateEmail = (req, res, next) => {
       message: 'Email không hợp lệ'
     });
   }
-  
+
   // Gán giá trị đã xử lý vào request body
   req.body.email = trimmedEmail;
-  
+
   next();
 };
 
 // Xác thực số điện thoại
 exports.validatePhoneNumber = (req, res, next) => {
   const { phoneNumber } = req.body;
-  
+
   // Nếu không có số điện thoại, cho phép bỏ qua
   if (!phoneNumber) {
     next();
     return;
   }
-  
+
   const trimmedPhone = phoneNumber.trim();
-  
+
   if (!trimmedPhone.match(/^[0-9]{10,11}$/)) {
     return res.status(400).json({
       success: false,
@@ -87,10 +87,10 @@ exports.validatePhoneNumber = (req, res, next) => {
       message: 'Số điện thoại không hợp lệ'
     });
   }
-  
+
   // Gán giá trị đã xử lý vào request body
   req.body.phoneNumber = trimmedPhone;
-  
+
   next();
 };
 
@@ -98,7 +98,7 @@ exports.validatePhoneNumber = (req, res, next) => {
 exports.validatePassword = (req, res, next) => {
   const { password } = req.body;
   const { googleId, facebookId } = req.body;
-  
+
   // Mật khẩu chỉ bắt buộc nếu không dùng xác thực từ mạng xã hội
   if (!googleId && !facebookId && !password) {
     return res.status(400).json({
@@ -107,7 +107,7 @@ exports.validatePassword = (req, res, next) => {
       message: 'Mật khẩu là bắt buộc'
     });
   }
-  
+
   // Nếu có mật khẩu, kiểm tra độ dài
   if (password && password.length < 6) {
     return res.status(400).json({
@@ -116,25 +116,22 @@ exports.validatePassword = (req, res, next) => {
       message: 'Mật khẩu phải có ít nhất 6 ký tự'
     });
   }
-  
+
   next();
 };
 
-// Xác thực ngày sinh
+// Xác thực ngày sinh (optional)
 exports.validateDateOfBirth = (req, res, next) => {
   const { dateOfBirth } = req.body;
-  
+
+  // Ngày sinh là optional - bỏ qua nếu không có
   if (!dateOfBirth) {
-    return res.status(400).json({
-      success: false,
-      field: 'dateOfBirth',
-      message: 'Ngày sinh là bắt buộc'
-    });
+    return next();
   }
-  
+
   const dob = new Date(dateOfBirth);
   const now = new Date();
-  
+
   if (isNaN(dob.getTime()) || dob > now) {
     return res.status(400).json({
       success: false,
@@ -142,22 +139,19 @@ exports.validateDateOfBirth = (req, res, next) => {
       message: 'Ngày sinh không hợp lệ'
     });
   }
-  
+
   next();
 };
 
-// Xác thực giới tính
+// Xác thực giới tính (optional)
 exports.validateGender = (req, res, next) => {
   const { gender } = req.body;
-  
+
+  // Giới tính là optional - bỏ qua nếu không có
   if (!gender) {
-    return res.status(400).json({
-      success: false,
-      field: 'gender',
-      message: 'Giới tính là bắt buộc'
-    });
+    return next();
   }
-  
+
   if (!['male', 'female', 'other'].includes(gender)) {
     return res.status(400).json({
       success: false,
@@ -165,14 +159,14 @@ exports.validateGender = (req, res, next) => {
       message: 'Giới tính phải là male, female hoặc other'
     });
   }
-  
+
   next();
 };
 
 // Xác thực địa chỉ
 exports.validateAddress = (req, res, next) => {
   const { address } = req.body;
-  
+
   if (address && address.trim().length > 200) {
     return res.status(400).json({
       success: false,
@@ -180,18 +174,18 @@ exports.validateAddress = (req, res, next) => {
       message: 'Địa chỉ không được vượt quá 200 ký tự'
     });
   }
-  
+
   if (address) {
     req.body.address = address.trim();
   }
-  
+
   next();
 };
 
 // Xác thực vai trò
 exports.validateRoleType = (req, res, next) => {
   const { roleType } = req.body;
-  
+
   if (roleType && !['user'].includes(roleType)) {
     return res.status(400).json({
       success: false,
@@ -199,7 +193,7 @@ exports.validateRoleType = (req, res, next) => {
       message: 'Vai trò không hợp lệ'
     });
   }
-  
+
   next();
 };
 
@@ -227,7 +221,7 @@ exports.validateUserUpdate = [
 // Middleware xác thực đổi mật khẩu
 exports.validatePasswordChange = (req, res, next) => {
   const { currentPassword, newPassword } = req.body;
-  
+
   if (!currentPassword) {
     return res.status(400).json({
       success: false,
@@ -235,7 +229,7 @@ exports.validatePasswordChange = (req, res, next) => {
       message: 'Mật khẩu hiện tại là bắt buộc'
     });
   }
-  
+
   if (!newPassword) {
     return res.status(400).json({
       success: false,
@@ -243,7 +237,7 @@ exports.validatePasswordChange = (req, res, next) => {
       message: 'Mật khẩu mới là bắt buộc'
     });
   }
-  
+
   if (newPassword.length < 6) {
     return res.status(400).json({
       success: false,
@@ -251,7 +245,7 @@ exports.validatePasswordChange = (req, res, next) => {
       message: 'Mật khẩu mới phải có ít nhất 6 ký tự'
     });
   }
-  
+
   if (currentPassword === newPassword) {
     return res.status(400).json({
       success: false,
@@ -259,6 +253,6 @@ exports.validatePasswordChange = (req, res, next) => {
       message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại'
     });
   }
-  
+
   next();
 }; 
