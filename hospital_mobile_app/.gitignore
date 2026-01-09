@@ -1,0 +1,74 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Google Services (contains sensitive API keys)
+**/google-services.json
+!**/google-services.json.template
+
+# iOS Google Service Info
+**/GoogleService-Info.plist
+!**/GoogleService-Info.plist.template
+# Gradle caches/builds anywhere in the project (including plugins/packages)
+.gradle/
+**/.gradle/
+android/app/build/
+android/build/
+
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+
+
+# Sensitive configuration files (Facebook, Google API keys)
+android/app/src/main/res/values/strings.xml
+!android/app/src/main/res/values/strings.xml.template
+
+# Client secrets
+**/client_secret*.json

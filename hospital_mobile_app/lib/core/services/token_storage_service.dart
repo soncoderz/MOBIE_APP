@@ -1,0 +1,102 @@
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../constants/app_constants.dart';
+
+/// Service for securely storing and retrieving JWT tokens
+class TokenStorageService {
+  static final TokenStorageService _instance = TokenStorageService._internal();
+  factory TokenStorageService() => _instance;
+  TokenStorageService._internal();
+
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
+
+  /// Save JWT token to secure storage
+  Future<void> saveToken(String token) async {
+    try {
+      print('[TokenStorage] Saving token: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      await _secureStorage.write(
+        key: AppConstants.jwtTokenKey,
+        value: token,
+      );
+      print('[TokenStorage] Token saved successfully');
+      
+      // Verify token was saved
+      final savedToken = await _secureStorage.read(key: AppConstants.jwtTokenKey);
+      print('[TokenStorage] Token verification: ${savedToken != null && savedToken.isNotEmpty}');
+    } catch (e) {
+      print('[TokenStorage] Error saving token: $e');
+      throw Exception('Failed to save token: $e');
+    }
+  }
+
+  /// Get JWT token from secure storage
+  Future<String?> getToken() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.jwtTokenKey);
+    } catch (e) {
+      throw Exception('Failed to get token: $e');
+    }
+  }
+
+  /// Delete JWT token from secure storage
+  Future<void> deleteToken() async {
+    try {
+      await _secureStorage.delete(key: AppConstants.jwtTokenKey);
+    } catch (e) {
+      throw Exception('Failed to delete token: $e');
+    }
+  }
+
+  /// Save user data (cached profile) as JSON string
+  Future<void> saveUserData(Map<String, dynamic> userJson) async {
+    try {
+      await _secureStorage.write(
+        key: AppConstants.userDataKey,
+        value: jsonEncode(userJson),
+      );
+    } catch (e) {
+      throw Exception('Failed to save user data: $e');
+    }
+  }
+
+  /// Get cached user data JSON string
+  Future<String?> getUserData() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.userDataKey);
+    } catch (e) {
+      throw Exception('Failed to get user data: $e');
+    }
+  }
+
+  /// Delete cached user data
+  Future<void> deleteUserData() async {
+    try {
+      await _secureStorage.delete(key: AppConstants.userDataKey);
+    } catch (e) {
+      throw Exception('Failed to delete user data: $e');
+    }
+  }
+
+  /// Check if token exists in secure storage
+  Future<bool> hasToken() async {
+    try {
+      final token = await getToken();
+      return token != null && token.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Clear all data from secure storage
+  Future<void> clearAll() async {
+    try {
+      await _secureStorage.deleteAll();
+    } catch (e) {
+      throw Exception('Failed to clear storage: $e');
+    }
+  }
+}

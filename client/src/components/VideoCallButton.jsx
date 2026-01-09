@@ -1,0 +1,196 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { FaVideo, FaSpinner } from 'react-icons/fa';
+import api from '../utils/api';
+import VideoRoom from './VideoRoom/VideoRoom';
+import { toast } from 'react-toastify';
+import { useSocket } from '../context/SocketContext';
+
+const VideoCallButton = ({ appointmentId, userRole, appointmentStatus }) => {
+  const [showVideoRoom, setShowVideoRoom] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [roomInfo, setRoomInfo] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const { socket, on, off } = useSocket();
+
+  const fetchExistingRoom = useCallback(async () => {
+    try {
+      const response = await api.get(`/video-rooms/appointment/${appointmentId}`);
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error('Error checking existing room:', error);
+    }
+    return null;
+  }, [appointmentId]);
+
+  const checkExistingRoom = useCallback(async () => {
+    try {
+      setChecking(true);
+      const existingRoom = await fetchExistingRoom();
+      setRoomInfo(existingRoom);
+    } catch (error) {
+      console.error('Error checking existing room:', error);
+    } finally {
+      setChecking(false);
+    }
+  }, [fetchExistingRoom]);
+
+  useEffect(() => {
+    // Check if there's an active room for this appointment
+    checkExistingRoom();
+  }, [checkExistingRoom]);
+
+  useEffect(() => {
+    if (!socket || !appointmentId) return;
+
+    const handleRoomUpdate = (payload) => {
+      if (!payload?.appointmentId) return;
+      const incomingAppointmentId = payload.appointmentId.toString();
+      if (incomingAppointmentId !== appointmentId.toString()) return;
+
+      const room = payload.room;
+      if (room && ['waiting', 'active'].includes(room.status)) {
+        setRoomInfo(room);
+      } else {
+        setRoomInfo(null);
+        setShowVideoRoom(false);
+      }
+    };
+
+    on('video_room_updated', handleRoomUpdate);
+    return () => {
+      off('video_room_updated', handleRoomUpdate);
+    };
+  }, [socket, appointmentId, on, off]);
+
+  const handleStartVideoCall = async () => {
+    try {
+      setLoading(true);
+
+      // Double-check if a room already exists to avoid race conditions
+      const existingRoom = await fetchExistingRoom();
+      if (existingRoom && ['waiting', 'active'].includes(existingRoom.status)) {
+        toast.info('Phòng video đã sẵn sàng, tham gia ngay!');
+        setRoomInfo(existingRoom);
+        setShowVideoRoom(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Create or get existing room
+      const response = await api.post('/video-rooms/create', {
+        appointmentId
+      });
+
+      if (response.data.success) {
+        setRoomInfo(response.data.data);
+        setShowVideoRoom(true);
+      } else {
+        toast.error(response.data.message || 'Không thể tạo phòng video');
+      }
+    } catch (error) {
+      console.error('Error starting video call:', error);
+      const responseData = error?.response?.data;
+      if (responseData?.errorCode === 'VIDEO_ROOM_LIMIT_REACHED') {
+        const limit = responseData?.limit ?? 3;
+        const current = responseData?.current ?? limit;
+        toast.error(`${responseData.message} (Da tao ${current}/${limit} phong.)`);
+      } else {
+        const fallbackMessage =
+          responseData?.message ||
+          error?.message ||
+          'Không thể bắt đầu cuộc gọi video';
+        toast.error(fallbackMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJoinVideoCall = () => {
+    if (roomInfo && roomInfo._id) {
+      setShowVideoRoom(true);
+    }
+  };
+
+  const handleCloseVideoRoom = () => {
+    setShowVideoRoom(false);
+    checkExistingRoom(); // Recheck room status after closing
+  };
+
+  // Don't show button if appointment is not confirmed or completed
+  if (!['confirmed', 'completed'].includes(appointmentStatus)) {
+    return null;
+  }
+
+  // Show video room if active
+  if (showVideoRoom && roomInfo) {
+    return (
+      <VideoRoom 
+        roomId={roomInfo._id}
+        onClose={handleCloseVideoRoom}
+        userRole={userRole}
+      />
+    );
+  }
+
+  // Loading state
+  if (checking) {
+    return (
+      <button 
+        className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed"
+        disabled
+      >
+        <FaSpinner className="animate-spin mr-2" />
+        Đang kiểm tra...
+      </button>
+    );
+  }
+
+  // If room exists and is active
+  if (roomInfo && ['waiting', 'active'].includes(roomInfo.status)) {
+    return (
+      <button
+        onClick={handleJoinVideoCall}
+        className="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-md"
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <FaSpinner className="animate-spin mr-2" />
+            Đang kết nối...
+          </>
+        ) : (
+          <>
+            <FaVideo className="mr-2 animate-pulse" />
+            Tham gia cuộc gọi
+          </>
+        )}
+      </button>
+    );
+  }
+
+  // Button to start new video call
+  return (
+    <button
+      onClick={handleStartVideoCall}
+      className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md"
+      disabled={loading}
+    >
+      {loading ? (
+        <>
+          <FaSpinner className="animate-spin mr-2" />
+          Đang tạo phòng...
+        </>
+      ) : (
+        <>
+          <FaVideo className="mr-2" />
+          Bắt đầu gọi video
+        </>
+      )}
+    </button>
+  );
+};
+
+export default VideoCallButton;
