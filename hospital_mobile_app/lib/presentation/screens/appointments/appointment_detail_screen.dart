@@ -8,6 +8,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/billing_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/billing/user_billing_widget.dart';
+import '../chat/chat_screen.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final String appointmentId;
@@ -134,6 +135,22 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         _loadAppointmentDetails();
       }
     });
+  }
+
+  void _navigateToChatWithDoctor(Appointment appointment) {
+    // Use doctorUserId (User ID) for chat API, fallback to doctorId if not available
+    final chatDoctorId = appointment.doctorUserId ?? appointment.doctorId;
+    print('[Chat] Using doctorId: $chatDoctorId (doctorUserId: ${appointment.doctorUserId}, doctorId: ${appointment.doctorId})');
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          doctorId: chatDoctorId,
+          doctorName: appointment.doctorName,
+        ),
+      ),
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -369,9 +386,30 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   onPaymentComplete: _loadAppointmentDetails,
                 ),
 
+                // Chat with Doctor Button - Always show for pending/confirmed appointments
+                if (appointment.status == 'pending' || appointment.status == 'confirmed')
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _navigateToChatWithDoctor(appointment),
+                        icon: const Icon(Icons.chat),
+                        label: const Text('Chat với bác sĩ'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Action Buttons
                 // Only show cancel/reschedule for pending appointments
-                // Show contact doctor button for confirmed appointments
                 if (appointment.status == 'pending')
                   Padding(
                     padding: const EdgeInsets.all(16),

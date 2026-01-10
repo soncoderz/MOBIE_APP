@@ -15,16 +15,16 @@ const { uploadMediaToCloudinary } = require('../utils/mediaUpload');
 exports.getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const conversations = await Conversation.find({
       participants: userId,
       isActive: true
     })
-    .populate({
-      path: 'participants',
-      select: 'fullName profileImage roleType email'
-    })
-    .sort({ 'lastMessage.timestamp': -1 });
+      .populate({
+        path: 'participants',
+        select: 'fullName profileImage roleType email'
+      })
+      .sort({ 'lastMessage.timestamp': -1 });
 
     // Format the response for the client
     const formattedConversations = conversations.map(conv => {
@@ -136,10 +136,10 @@ exports.sendMessage = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: 'Dữ liệu đầu vào không hợp lệ',
-        errors: errors.array() 
+        errors: errors.array()
       });
     }
 
@@ -184,19 +184,19 @@ exports.sendMessage = async (req, res) => {
       senderId,
       timestamp: new Date()
     };
-    
+
     // Update last activity timestamp
     conversation.lastActivity = new Date();
-    
+
     // Initialize unreadCount map if it doesn't exist
     if (!conversation.unreadCount) {
       conversation.unreadCount = new Map();
     }
-    
+
     // Increment unread count for the receiver
     const receiverUnreadCount = conversation.unreadCount.get(receiverId.toString()) || 0;
     conversation.unreadCount.set(receiverId.toString(), receiverUnreadCount + 1);
-    
+
     await conversation.save();
 
     // Populate sender info
@@ -260,10 +260,10 @@ exports.createConversation = async (req, res) => {
     // Input validation
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: 'Dữ liệu đầu vào không hợp lệ',
-        errors: errors.array() 
+        errors: errors.array()
       });
     }
 
@@ -281,7 +281,7 @@ exports.createConversation = async (req, res) => {
 
     // Find participant user
     let participant = await User.findById(participantId);
-    
+
     // If not found directly as user, check if it's a doctor ID
     if (!participant) {
       const doctor = await Doctor.findById(participantId);
@@ -289,14 +289,14 @@ exports.createConversation = async (req, res) => {
         participant = await User.findById(doctor.userId);
       }
     }
-    
+
     if (!participant) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy người dùng với ID đã cung cấp'
       });
     }
-    
+
     const resolvedParticipantId = participant._id.toString();
 
     // Check if conversation already exists between these users
@@ -311,7 +311,7 @@ exports.createConversation = async (req, res) => {
         path: 'participants',
         select: 'fullName profileImage roleType email'
       });
-      
+
       return res.status(200).json({
         success: true,
         message: 'Cuộc trò chuyện đã tồn tại',
@@ -344,7 +344,7 @@ exports.createConversation = async (req, res) => {
             message: 'Bạn cần đặt lịch khám với bác sĩ trước khi tạo cuộc trò chuyện'
           });
         }
-      } 
+      }
       // For doctors trying to chat with patients
       else if (userRole === 'doctor' && participant.roleType === 'user') {
         const doctor = await Doctor.findOne({ user: userId });
@@ -370,7 +370,7 @@ exports.createConversation = async (req, res) => {
       }
       // Prevent other role combinations
       else if (
-        !(userRole === 'user' && participant.roleType === 'doctor') && 
+        !(userRole === 'user' && participant.roleType === 'doctor') &&
         !(userRole === 'doctor' && participant.roleType === 'user')
       ) {
         return res.status(403).json({
@@ -405,7 +405,7 @@ exports.createConversation = async (req, res) => {
         senderId: userId,
         timestamp: new Date()
       };
-      
+
       await conversation.save();
     }
 
@@ -487,22 +487,22 @@ exports.deleteConversation = async (req, res) => {
 exports.getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Get all conversations the user is part of
     const conversations = await Conversation.find({
       participants: userId,
       isActive: true
     });
-    
+
     const conversationIds = conversations.map(conv => conv._id);
-    
+
     // Count unread messages in all conversations
     const unreadCount = await Message.countDocuments({
       conversationId: { $in: conversationIds },
       senderId: { $ne: userId },
       readAt: null
     });
-    
+
     return res.status(200).json({
       success: true,
       data: { unreadCount }
@@ -525,28 +525,28 @@ exports.getUnreadCount = async (req, res) => {
 exports.getAvailableDoctors = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Get all doctors the user has appointments with
     const appointments = await Appointment.find({
       patientId: userId,
       status: { $in: ['pending', 'confirmed', 'completed'] }
     })
-    .populate({
-      path: 'doctorId',
-      populate: {
-        path: 'user',
-        select: 'fullName profileImage email'
-      }
-    })
-    .populate('doctorId.specialtyId');
-    
+      .populate({
+        path: 'doctorId',
+        populate: {
+          path: 'user',
+          select: 'fullName profileImage email'
+        }
+      })
+      .populate('doctorId.specialtyId');
+
     // Extract unique doctors from appointments
     const doctorMap = {};
     appointments.forEach(appointment => {
       if (appointment.doctorId && appointment.doctorId.userId) {
         const doctor = appointment.doctorId;
         const userId = doctor.userId._id;
-        
+
         if (!doctorMap[userId]) {
           doctorMap[userId] = {
             id: userId,
@@ -559,7 +559,7 @@ exports.getAvailableDoctors = async (req, res) => {
         }
       }
     });
-    
+
     return res.status(200).json({
       success: true,
       data: Object.values(doctorMap)
@@ -582,27 +582,27 @@ exports.getAvailableDoctors = async (req, res) => {
 exports.getAvailablePatients = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    
+
     // Find doctor
     const doctor = await Doctor.findOne({ user: doctorId });
-    
+
     if (!doctor) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy thông tin bác sĩ'
       });
     }
-    
+
     // Get all patients the doctor has appointments with
     const appointments = await Appointment.find({
       doctorId: doctor._id,
       status: { $in: ['pending', 'confirmed', 'completed'] }
     })
-    .populate({
-      path: 'patientId',
-      select: 'fullName profileImage email phoneNumber'
-    });
-    
+      .populate({
+        path: 'patientId',
+        select: 'fullName profileImage email phoneNumber'
+      });
+
     // Map to unique patients with latest appointment first
     const patientMap = {};
     appointments.forEach(appointment => {
@@ -622,7 +622,7 @@ exports.getAvailablePatients = async (req, res) => {
         };
       }
     });
-    
+
     return res.status(200).json({
       success: true,
       data: Object.values(patientMap)
@@ -646,17 +646,17 @@ exports.deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const userId = req.user.id;
-    
+
     // Find the message
     const message = await Message.findById(messageId);
-    
+
     if (!message) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tin nhắn'
       });
     }
-    
+
     // Check if user is the sender
     if (message.senderId.toString() !== userId) {
       return res.status(403).json({
@@ -664,18 +664,18 @@ exports.deleteMessage = async (req, res) => {
         message: 'Bạn không có quyền xóa tin nhắn này'
       });
     }
-    
+
     // Soft delete the message
     message.isDeleted = true;
     message.deletedAt = new Date();
     message.content = 'Tin nhắn đã bị xóa';
     await message.save();
-    
+
     // Check if it's the last message in the conversation and update if needed
     const conversation = await Conversation.findById(message.conversationId);
     if (
-      conversation && 
-      conversation.lastMessage && 
+      conversation &&
+      conversation.lastMessage &&
       conversation.lastMessage.content === message.content
     ) {
       // Find the previous message that isn't deleted
@@ -684,7 +684,7 @@ exports.deleteMessage = async (req, res) => {
         isDeleted: false,
         _id: { $ne: messageId }
       }).sort({ createdAt: -1 });
-      
+
       if (previousMessage) {
         conversation.lastMessage = {
           content: previousMessage.content,
@@ -699,10 +699,10 @@ exports.deleteMessage = async (req, res) => {
           timestamp: new Date()
         };
       }
-      
+
       await conversation.save();
     }
-    
+
     return res.status(200).json({
       success: true,
       message: 'Tin nhắn đã được xóa'
@@ -838,10 +838,10 @@ exports.sendAppointmentMessage = async (req, res) => {
     if (!conversation.unreadCount) {
       conversation.unreadCount = new Map();
     }
-    
+
     const receiverUnreadCount = conversation.unreadCount.get(receiverId.toString()) || 0;
     conversation.unreadCount.set(receiverId.toString(), receiverUnreadCount + 1);
-    
+
     await conversation.save();
 
     await message.populate('senderId', 'fullName avatarUrl avatar');

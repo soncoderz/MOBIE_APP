@@ -134,13 +134,13 @@ class PaymentMethodScreen extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pop(context); // Close loading
 
-    if (success && paymentProvider.momoPaymentUrl != null) {
+    if (success && paymentProvider.currentPayment?.payUrl != null) {
       Navigator.pushNamed(
         context,
         '/payment-webview',
         arguments: {
-          'url': paymentProvider.momoPaymentUrl,
-          'orderId': paymentProvider.currentOrderId,
+          'url': paymentProvider.currentPayment?.payUrl,
+          'orderId': paymentProvider.currentPayment?.orderId,
         },
       );
     } else {

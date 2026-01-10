@@ -112,6 +112,13 @@ class ApiConstants {
   static const String doctorStats = '/statistics/doctors';
   static const String appointmentStats = '/statistics/appointments';
 
+  // Chat Endpoints
+  static const String conversations = '/chat/conversations';
+  static String conversationMessages(String id) => '/chat/conversations/$id/messages';
+  static const String createConversation = '/chat/conversations'; // POST with participantId in body
+  static const String uploadChatMedia = '/chat/upload-media';
+  static String sendAppointmentInChat(String conversationId) => '/chat/conversations/$conversationId/send-appointment';
+
   // Timeout durations
   static const Duration connectTimeout = Duration(seconds: 60);
   static const Duration receiveTimeout = Duration(seconds: 60);

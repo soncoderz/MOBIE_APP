@@ -65,16 +65,16 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
 
   Future<void> _openMomoDeepLink(String url) async {
     try {
-      String launchUrl = url;
+      String urlString = url;
       
       if (url.contains('test-applinks.momo.vn') || url.contains('applinks.momo.vn')) {
         final uri = Uri.parse(url);
         if (uri.query.isNotEmpty) {
-          launchUrl = 'momo://app?${uri.query}';
+          urlString = 'momo://app?${uri.query}';
         }
       }
 
-      final targetUri = Uri.parse(launchUrl);
+      final targetUri = Uri.parse(urlString);
       if (await canLaunchUrl(targetUri)) {
         await launchUrl(targetUri, mode: LaunchMode.externalApplication);
       }
