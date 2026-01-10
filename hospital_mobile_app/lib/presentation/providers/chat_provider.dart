@@ -167,13 +167,17 @@ class ChatProvider extends ChangeNotifier {
       // If it's for the current conversation, add to messages
       if (_currentConversation != null && 
           message.conversationId == _currentConversation!.id) {
-        _messages.add(message);
-        
-        // Mark as read if not from current user
-        if (message.senderId != _userId) {
-          _markMessagesAsRead([message.id]);
+        // Check if message already exists to avoid duplicates
+        final exists = _messages.any((m) => m.id == message.id);
+        if (!exists) {
+          _messages.add(message);
+          
+          // Mark as read if not from current user
+          if (message.senderId != _userId) {
+            _markMessagesAsRead([message.id]);
+          }
+          notifyListeners();
         }
-        notifyListeners();
       }
       
       // Refresh conversations list
@@ -326,7 +330,16 @@ class ChatProvider extends ChangeNotifier {
         content,
       );
       
-      // Message will be added via socket event
+      if (message != null) {
+        // Add message immediately to the local list for instant UI update
+        // Check if message already exists to avoid duplicates from socket
+        final exists = _messages.any((m) => m.id == message.id);
+        if (!exists) {
+          _messages.add(message);
+          notifyListeners();
+        }
+      }
+      
       return message != null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -350,6 +363,15 @@ class ChatProvider extends ChangeNotifier {
         caption ?? (mediaData['resourceType'] == 'image' ? 'Đã gửi ảnh' : 'Đã gửi video'),
         mediaData,
       );
+      
+      if (message != null) {
+        // Add message immediately to the local list for instant UI update
+        final exists = _messages.any((m) => m.id == message.id);
+        if (!exists) {
+          _messages.add(message);
+          notifyListeners();
+        }
+      }
       
       return message != null;
     } catch (e) {
