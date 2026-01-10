@@ -214,6 +214,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Get other participant info
                 final otherParticipant = chatProvider.currentConversation
                     ?.getOtherParticipant(chatProvider.currentUserId ?? '');
+                
+                // Get current user info for own messages
+                final authProvider = context.read<AuthProvider>();
+                final currentUser = authProvider.user;
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -227,8 +231,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     return MessageBubble(
                       message: message,
                       isOwnMessage: isOwnMessage,
-                      senderName: isOwnMessage ? null : otherParticipant?.fullName,
-                      senderAvatar: isOwnMessage ? null : otherParticipant?.avatarUrl,
+                      senderName: isOwnMessage 
+                          ? currentUser?.fullName 
+                          : otherParticipant?.fullName,
+                      senderAvatar: isOwnMessage 
+                          ? currentUser?.avatarUrl 
+                          : otherParticipant?.avatarUrl,
                     );
                   },
                 );

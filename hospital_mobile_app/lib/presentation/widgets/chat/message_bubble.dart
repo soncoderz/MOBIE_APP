@@ -26,16 +26,16 @@ class MessageBubble extends StatelessWidget {
             isOwnMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Avatar for received messages
+          // Avatar for received messages (left side)
           if (!isOwnMessage) ...[
-            _buildAvatar(),
+            _buildAvatar(isOwn: false),
             const SizedBox(width: 8),
           ],
           // Message bubble
           Flexible(
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
+                maxWidth: MediaQuery.of(context).size.width * 0.65,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
@@ -89,12 +89,17 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
+          // Avatar for own messages (right side)
+          if (isOwnMessage) ...[
+            const SizedBox(width: 8),
+            _buildAvatar(isOwn: true),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar({bool isOwn = false}) {
     if (senderAvatar != null && senderAvatar!.isNotEmpty) {
       return CircleAvatar(
         radius: 16,
@@ -103,11 +108,11 @@ class MessageBubble extends StatelessWidget {
     }
     return CircleAvatar(
       radius: 16,
-      backgroundColor: Colors.blue.shade100,
+      backgroundColor: isOwn ? Colors.green.shade100 : Colors.blue.shade100,
       child: Text(
-        senderName?.isNotEmpty == true ? senderName![0].toUpperCase() : 'U',
+        senderName?.isNotEmpty == true ? senderName![0].toUpperCase() : (isOwn ? 'T' : 'U'),
         style: TextStyle(
-          color: Colors.blue.shade700,
+          color: isOwn ? Colors.green.shade700 : Colors.blue.shade700,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
@@ -161,17 +166,19 @@ class MessageBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime dateTime) {
+    // Convert UTC to local timezone
+    final localTime = dateTime.toLocal();
     final now = DateTime.now();
-    final diff = now.difference(dateTime);
+    final diff = now.difference(localTime);
 
     if (diff.inDays == 0) {
-      return DateFormat('HH:mm').format(dateTime);
+      return DateFormat('HH:mm').format(localTime);
     } else if (diff.inDays == 1) {
-      return 'Hôm qua ${DateFormat('HH:mm').format(dateTime)}';
+      return 'Hôm qua ${DateFormat('HH:mm').format(localTime)}';
     } else if (diff.inDays < 7) {
-      return DateFormat('EEEE HH:mm', 'vi').format(dateTime);
+      return DateFormat('EEEE HH:mm', 'vi').format(localTime);
     } else {
-      return DateFormat('dd/MM/yyyy HH:mm').format(dateTime);
+      return DateFormat('dd/MM/yyyy HH:mm').format(localTime);
     }
   }
 }

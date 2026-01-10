@@ -340,17 +340,19 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   }
 
   String _formatTime(DateTime dateTime) {
+    // Convert UTC to local timezone
+    final localTime = dateTime.toLocal();
     final now = DateTime.now();
-    final diff = now.difference(dateTime);
+    final diff = now.difference(localTime);
 
     if (diff.inHours < 24) {
-      return DateFormat('HH:mm').format(dateTime);
+      return DateFormat('HH:mm').format(localTime);
     } else if (diff.inDays == 1) {
       return 'Hôm qua';
     } else if (diff.inDays < 7) {
-      return DateFormat('EEEE', 'vi').format(dateTime);
+      return DateFormat('EEEE', 'vi').format(localTime);
     } else {
-      return DateFormat('dd/MM').format(dateTime);
+      return DateFormat('dd/MM').format(localTime);
     }
   }
 }
