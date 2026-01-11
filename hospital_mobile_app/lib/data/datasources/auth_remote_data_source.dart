@@ -80,6 +80,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await _dioClient.post(
         ApiConstants.login,
         data: dto.toJson(),
+        options: Options(
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
 
       if (response.statusCode == 200) {

@@ -24,7 +24,7 @@ const statisticsRoutes = require('./routes/statistics');
 const logRoutes = require('./routes/log');
 const scheduleRoutes = require('./routes/schedule');
 const adminRoutes = require('./routes/admin');
-const aiRoutes = require('./routes/ai');
+// AI routes removed - aiRoutes was deleted
 const { protect } = require('./middlewares/authMiddleware');
 // Import các routes còn thiếu
 const apiRoutes = require('./routes/api');
@@ -44,6 +44,7 @@ const medicationInventoryRoutes = require('./routes/medicationInventoryRoutes');
 const hospitalizationRoutes = require('./routes/hospitalizationRoutes');
 const inpatientRoomRoutes = require('./routes/inpatientRoomRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const chatbotRoutes = require('./routes/chatbotRoutes');
 
 // Load environment variables
 console.log('Loading environment variables from .env file');
@@ -177,7 +178,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/ai', protect, aiLimiter, aiRoutes);
+// AI routes removed
 
 // Đăng ký các routes còn thiếu
 app.use('/api', apiRoutes);
@@ -197,6 +198,7 @@ app.use('/api/inpatient-rooms', inpatientRoomRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 
 
