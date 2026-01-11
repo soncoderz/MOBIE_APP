@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:async';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/token_storage_service.dart';
 import '../../data/repositories/chat_repository_impl.dart';
@@ -53,7 +54,15 @@ class ChatProvider extends ChangeNotifier {
 
   /// Initialize socket connection
   Future<void> initSocket() async {
-    if (_socket != null) return;
+    if (_socket != null) {
+      // Socket already exists, check if connected
+      if (_isSocketConnected) {
+        debugPrint('🔌 [Socket] Already connected, skipping init');
+        return;
+      }
+      // Socket exists but not connected, reconnect
+      debugPrint('🔌 [Socket] Socket exists but not connected, reconnecting...');
+    }
 
     final token = await _tokenStorage.getToken();
     if (token == null || token.isEmpty) {
@@ -63,6 +72,9 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       debugPrint('🔌 Initializing socket connection to ${ApiConstants.socketUrl}');
+
+      // Create a completer to wait for connection
+      final completer = Completer<void>();
 
       _socket = IO.io(
         ApiConstants.socketUrl,
@@ -75,19 +87,32 @@ class ChatProvider extends ChangeNotifier {
       );
 
       _socket!.onConnect((_) {
-        debugPrint('🔌 Socket connected');
+        debugPrint('🔌 [Socket] CONNECTED successfully!');
         _isSocketConnected = true;
         notifyListeners();
+        // Complete the completer if not already done
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
       });
 
       _socket!.onDisconnect((_) {
-        debugPrint('🔌 Socket disconnected');
+        debugPrint('🔌 [Socket] DISCONNECTED');
         _isSocketConnected = false;
         notifyListeners();
       });
 
       _socket!.onConnectError((error) {
-        debugPrint('🔌 Socket connect error: $error');
+        debugPrint('🔌 [Socket] Connection ERROR: $error');
+        // Complete with error if not already done
+        if (!completer.isCompleted) {
+          completer.completeError(error);
+        }
+      });
+      
+      // Debug: Listen to all events (for debugging only)
+      _socket!.onAny((event, data) {
+        debugPrint('🔌 [Socket] Event received: $event');
       });
 
       // Listen for online users
@@ -112,9 +137,22 @@ class ChatProvider extends ChangeNotifier {
         }
       });
 
-      // Listen for new messages
+      // Listen for new messages (from conversation room)
       _socket!.on('new_message', (data) {
+        debugPrint('🔌 [Socket] new_message event received!');
         _handleNewMessage(data);
+      });
+      
+      // Listen for message notifications (from personal room - always received)
+      // This is a fallback in case conversation room join fails
+      _socket!.on('message_notification', (data) {
+        debugPrint('🔌 [Socket] message_notification event received!');
+        debugPrint('🔌 [Socket] Notification data: $data');
+        
+        // Extract message from notification data
+        if (data != null && data['message'] != null) {
+          _handleNewMessage(data['message']);
+        }
       });
 
       // Listen for typing events
@@ -143,6 +181,16 @@ class ChatProvider extends ChangeNotifier {
       });
 
       _socket!.connect();
+      
+      // Wait for connection with timeout
+      debugPrint('🔌 [Socket] Waiting for connection...');
+      await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('🔌 [Socket] Connection timeout after 5 seconds');
+        },
+      );
+      debugPrint('🔌 [Socket] initSocket completed, connected: $_isSocketConnected');
     } catch (e) {
       debugPrint('🔌 Socket init error: $e');
     }
@@ -162,15 +210,30 @@ class ChatProvider extends ChangeNotifier {
   /// Handle incoming new message
   void _handleNewMessage(dynamic data) {
     try {
+      debugPrint('📨 [Socket] Received new_message event');
+      debugPrint('📨 [Socket] Raw data: $data');
+      
       final message = Message.fromJson(data);
       
+      debugPrint('📨 [Socket] Parsed message - id: ${message.id}, conversationId: ${message.conversationId}');
+      debugPrint('📨 [Socket] Current conversation id: ${_currentConversation?.id}');
+      debugPrint('📨 [Socket] Message sender: ${message.senderId}, Current user: $_userId');
+      
       // If it's for the current conversation, add to messages
-      if (_currentConversation != null && 
-          message.conversationId == _currentConversation!.id) {
+      // Use string comparison to handle potential ObjectId vs String issues
+      final isForCurrentConversation = _currentConversation != null && 
+          message.conversationId.toString() == _currentConversation!.id.toString();
+      
+      debugPrint('📨 [Socket] Is for current conversation: $isForCurrentConversation');
+      
+      if (isForCurrentConversation) {
         // Check if message already exists to avoid duplicates
         final exists = _messages.any((m) => m.id == message.id);
+        debugPrint('📨 [Socket] Message already exists: $exists');
+        
         if (!exists) {
           _messages.add(message);
+          debugPrint('📨 [Socket] Message added to list. Total messages: ${_messages.length}');
           
           // Mark as read if not from current user
           if (message.senderId != _userId) {
@@ -182,20 +245,31 @@ class ChatProvider extends ChangeNotifier {
       
       // Refresh conversations list
       fetchConversations();
-    } catch (e) {
-      debugPrint('Error handling new message: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Socket] Error handling new message: $e');
+      debugPrint('❌ [Socket] Stack trace: $stackTrace');
     }
   }
 
   /// Join a conversation room
-  void joinConversation(String conversationId) {
+  Future<void> joinConversation(String conversationId) async {
+    debugPrint('🚪 [Socket] Attempting to join conversation: $conversationId');
+    debugPrint('🚪 [Socket] Socket null: ${_socket == null}, Connected: $_isSocketConnected');
+    
+    // If socket is not connected, wait a bit and check again
     if (_socket == null || !_isSocketConnected) {
-      debugPrint('🚪 Cannot join - socket not connected');
-      return;
+      debugPrint('🚪 [Socket] Socket not ready, waiting 500ms...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Check again after delay
+      if (_socket == null || !_isSocketConnected) {
+        debugPrint('🚪 [Socket] Still not connected after wait, cannot join');
+        return;
+      }
     }
     
     _socket!.emit('join_conversation', {'conversationId': conversationId});
-    debugPrint('🚪 Joined conversation: $conversationId');
+    debugPrint('🚪 [Socket] Joined conversation room: conversation:$conversationId');
   }
 
   /// Leave a conversation room
@@ -293,7 +367,7 @@ class ChatProvider extends ChangeNotifier {
       final conversation = await _chatRepository.startConversation(doctorId);
       if (conversation != null) {
         _currentConversation = conversation;
-        joinConversation(conversation.id);
+        await joinConversation(conversation.id);
         await fetchMessages(conversation.id);
       }
       
@@ -316,7 +390,7 @@ class ChatProvider extends ChangeNotifier {
     }
     
     _currentConversation = conversation;
-    joinConversation(conversation.id);
+    await joinConversation(conversation.id);
     await fetchMessages(conversation.id);
   }
 

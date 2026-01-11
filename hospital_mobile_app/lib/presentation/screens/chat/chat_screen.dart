@@ -31,7 +31,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   Timer? _typingTimer;
+  Timer? _refreshTimer;  // Backup polling timer
   bool _isSending = false;
+  int _lastMessageCount = 0;  // Track message count for auto-scroll
 
   @override
   void initState() {
@@ -68,6 +70,23 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _scrollToBottom();
+    _lastMessageCount = chatProvider.messages.length;
+    
+    // Start backup polling timer - refresh messages every 3 seconds
+    // This ensures messages appear even if socket events are missed
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
+      final provider = context.read<ChatProvider>();
+      if (provider.currentConversation != null) {
+        final previousCount = provider.messages.length;
+        await provider.fetchMessages(provider.currentConversation!.id);
+        // Auto scroll if new messages arrived
+        if (provider.messages.length > previousCount) {
+          _scrollToBottom();
+        }
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -142,6 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.dispose();
     _focusNode.dispose();
     _typingTimer?.cancel();
+    _refreshTimer?.cancel();  // Cancel backup polling timer
     context.read<ChatProvider>().clearCurrentConversation();
     super.dispose();
   }
