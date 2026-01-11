@@ -59,6 +59,10 @@ import 'presentation/screens/specialties/specialty_detail_screen.dart';
 import 'presentation/screens/hospitals/hospital_detail_screen.dart';
 import 'presentation/screens/chat/chat_screen.dart';
 import 'presentation/screens/chat/conversation_list_screen.dart';
+import 'presentation/screens/chatbot/ai_chatbot_screen.dart';
+import 'data/datasources/chatbot_remote_data_source.dart';
+import 'data/repositories/chatbot_repository.dart';
+import 'presentation/providers/chatbot_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +181,15 @@ class MyApp extends StatelessWidget {
             tokenStorage: tokenStorage,
           ),
         ),
+
+        // AI Chatbot Provider
+        ChangeNotifierProvider(
+          create: (_) => ChatbotProvider(
+            ChatbotRepositoryImpl(
+              ChatbotRemoteDataSourceImpl(dioClient),
+            ),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -207,6 +220,7 @@ class MyApp extends StatelessWidget {
           '/news': (context) => const NewsListScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/conversations': (context) => const ConversationListScreen(),
+          '/ai-chatbot': (context) => const AIChatbotScreen(),
         },
         onGenerateRoute: (settings) {
           // Handle routes with arguments

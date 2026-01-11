@@ -119,6 +119,10 @@ class ApiConstants {
   static const String uploadChatMedia = '/chat/upload-media';
   static String sendAppointmentInChat(String conversationId) => '/chat/conversations/$conversationId/send-appointment';
 
+  // AI Chatbot Endpoints
+  static const String chatbotMessage = '/chatbot/message';
+  static const String chatbotHistory = '/chatbot/history';
+
   // Timeout durations
   static const Duration connectTimeout = Duration(seconds: 60);
   static const Duration receiveTimeout = Duration(seconds: 60);

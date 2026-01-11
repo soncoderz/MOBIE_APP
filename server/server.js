@@ -44,6 +44,7 @@ const medicationInventoryRoutes = require('./routes/medicationInventoryRoutes');
 const hospitalizationRoutes = require('./routes/hospitalizationRoutes');
 const inpatientRoomRoutes = require('./routes/inpatientRoomRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const chatbotRoutes = require('./routes/chatbotRoutes');
 
 // Load environment variables
 console.log('Loading environment variables from .env file');
@@ -197,6 +198,7 @@ app.use('/api/inpatient-rooms', inpatientRoomRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 
 

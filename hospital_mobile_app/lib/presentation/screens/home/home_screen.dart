@@ -39,36 +39,47 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.user;
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.wait([
-          context.read<DoctorProvider>().refreshDoctors(),
-          context.read<SpecialtyProvider>().refreshSpecialties(),
-          context.read<HospitalProvider>().refreshHospitals(),
-          context.read<NewsProvider>().refreshNews(),
-          context.read<ReviewProvider>().refreshReviews(),
-          context.read<StatisticsProvider>().refreshStatistics(),
-        ]);
-      },
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeroBanner(context, user),
-            const SizedBox(height: 24),
-            _buildStatistics(context),
-            const SizedBox(height: 24),
-            _buildSpecialties(context),
-            const SizedBox(height: 24),
-            _buildFeaturedDoctors(context),
-            const SizedBox(height: 24),
-            _buildHospitals(context),
-            const SizedBox(height: 24),
-            _buildNews(context),
-            const SizedBox(height: 24),
-            _buildReviews(context),
-            const SizedBox(height: 24),
-          ],
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pushNamed(context, '/ai-chatbot');
+        },
+        backgroundColor: const Color(0xFF1976D2),
+        icon: const Icon(Icons.smart_toy, color: Colors.white),
+        label: const Text('Trợ lý AI', style: TextStyle(color: Colors.white)),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            context.read<DoctorProvider>().refreshDoctors(),
+            context.read<SpecialtyProvider>().refreshSpecialties(),
+            context.read<HospitalProvider>().refreshHospitals(),
+            context.read<NewsProvider>().refreshNews(),
+            context.read<ReviewProvider>().refreshReviews(),
+            context.read<StatisticsProvider>().refreshStatistics(),
+          ]);
+        },
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeroBanner(context, user),
+              const SizedBox(height: 24),
+              _buildStatistics(context),
+              const SizedBox(height: 24),
+              _buildSpecialties(context),
+              const SizedBox(height: 24),
+              _buildFeaturedDoctors(context),
+              const SizedBox(height: 24),
+              _buildHospitals(context),
+              const SizedBox(height: 24),
+              _buildNews(context),
+              const SizedBox(height: 24),
+              _buildReviews(context),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
