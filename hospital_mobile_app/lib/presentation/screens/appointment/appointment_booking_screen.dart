@@ -94,10 +94,16 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
     _selectedDoctorId = widget.doctorId;
     _selectedServiceId = widget.serviceId;
     
-    // Auto-skip to step 1 immediately if doctor is pre-selected
+    // Auto-skip to step 1 immediately if doctor is pre-selected (booking from doctor page)
     if (widget.doctorId != null && 
         (widget.hospitalId != null || widget.specialtyId != null)) {
       _currentStep = 1;
+    }
+    // When serviceId is provided WITHOUT doctorId (booking from service detail page),
+    // skip directly to step 2 (date/time selection) immediately
+    // This avoids showing step 0/1 before data loads
+    else if (widget.serviceId != null && widget.doctorId == null) {
+      _currentStep = 2;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -156,7 +162,25 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
         await _fetchDoctorsBySpecialty(_selectedSpecialtyId!);
       }
       
-      if (_selectedDoctorId != null) {
+      // Auto-select first doctor and skip to step 2 if serviceId was provided (booking from service page)
+      // This matches the web behavior where previous steps are auto-filled
+      // Only run when NOT booking from doctor page (doctorId not provided)
+      if (widget.serviceId != null && widget.doctorId == null && _selectedDoctorId == null) {
+        final doctors = context.read<DoctorProvider>().doctors;
+        if (doctors.isNotEmpty) {
+          final selectedDoctor = doctors.first;
+          setState(() {
+            _selectedDoctorId = selectedDoctor.id;
+            // Also set hospitalId from the selected doctor so step 0 shows correctly
+            if (selectedDoctor.hospitalId != null && _selectedHospitalId == null) {
+              _selectedHospitalId = selectedDoctor.hospitalId;
+            }
+            // _currentStep is already set to 2 in initState
+          });
+          await _fetchSchedules();
+          _calculatePrices();
+        }
+      } else if (_selectedDoctorId != null) {
         await _fetchSchedules();
       }
     } catch (e) {
@@ -488,6 +512,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
   Widget _buildDoctorServiceStep() {
     final doctorProvider = context.watch<DoctorProvider>();
     final serviceProvider = context.watch<ServiceProvider>();
+    
+    // Check if we're booking from doctor page (doctorId pre-selected)
+    final isDoctorPreSelected = widget.doctorId != null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -499,7 +526,18 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          if (doctorProvider.isLoading)
+          
+          // If doctor is pre-selected (booking from doctor page), show only selected doctor
+          if (isDoctorPreSelected) ...[
+            if (_selectedDoctorId != null)
+              _buildSelectedDoctorCard(doctorProvider)
+            else if (doctorProvider.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              const Text('Đang tải thông tin bác sĩ...'),
+          ]
+          // Otherwise show full doctor list
+          else if (doctorProvider.isLoading)
             const Center(child: CircularProgressIndicator())
           else if (doctorProvider.doctors.isEmpty)
             const Text('Không có bác sĩ nào')
@@ -560,6 +598,39 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
               ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Build a card showing only the pre-selected doctor (when booking from doctor page)
+  Widget _buildSelectedDoctorCard(DoctorProvider doctorProvider) {
+    // Try to find the doctor - check doctors list first, then selectedDoctor
+    dynamic selectedDoctor;
+    
+    // First try to find in the doctors list
+    for (var d in doctorProvider.doctors) {
+      if (d.id == _selectedDoctorId) {
+        selectedDoctor = d;
+        break;
+      }
+    }
+    
+    // If not found in list, use selectedDoctor from provider (from doctor detail page)
+    selectedDoctor ??= doctorProvider.selectedDoctor;
+    
+    // If still null, show loading
+    if (selectedDoctor == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Colors.blue.shade50,
+      child: ListTile(
+        leading: _buildAvatar(selectedDoctor.avatar),
+        title: Text(selectedDoctor.fullName),
+        subtitle: Text(selectedDoctor.specialtyName),
+        trailing: const Icon(Icons.check_circle, color: Colors.blue),
       ),
     );
   }
