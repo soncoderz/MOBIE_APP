@@ -5,6 +5,7 @@ import '../../core/services/token_storage_service.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
+import 'dart:convert';
 import 'dart:io';
 
 class ChatProvider extends ChangeNotifier {
@@ -60,6 +61,7 @@ class ChatProvider extends ChangeNotifier {
       debugPrint('🔌 No token for socket auth');
       return;
     }
+    _trySetUserIdFromToken(token);
 
     try {
       debugPrint('🔌 Initializing socket connection to ${ApiConstants.socketUrl}');
@@ -157,6 +159,28 @@ class ChatProvider extends ChangeNotifier {
       _socket = null;
       _isSocketConnected = false;
     }
+  }
+
+  void _trySetUserIdFromToken(String token) {
+    if (_userId != null && _userId!.isNotEmpty) return;
+    final tokenUserId = _extractUserIdFromToken(token);
+    if (tokenUserId == null || tokenUserId.isEmpty) return;
+    setUserId(tokenUserId);
+  }
+
+  String? _extractUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final data = jsonDecode(payload);
+      if (data is Map<String, dynamic>) {
+        final id = data['id'] ?? data['_id'] ?? data['userId'];
+        return id?.toString();
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Handle incoming new message

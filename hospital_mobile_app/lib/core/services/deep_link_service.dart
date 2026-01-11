@@ -17,6 +17,9 @@ class DeepLinkService {
 
   // Callback for payment result
   Function(String orderId, String resultCode, String? message)? onPaymentResult;
+  String? _lastPaymentResultKey;
+  DateTime? _lastPaymentResultAt;
+  static const Duration _paymentResultDedupeWindow = Duration(minutes: 5);
 
   /// Initialize the deep link service
   Future<void> init() async {
@@ -66,9 +69,15 @@ class DeepLinkService {
         debugPrint('Result Code: $resultCode');
         debugPrint('Message: $message');
 
+        if (_isDuplicatePaymentResult(orderId, resultCode, message)) {
+          debugPrint('Payment result already handled, skipping dialog.');
+          return;
+        }
+
         // Trigger callback if registered
         if (onPaymentResult != null) {
           onPaymentResult!(orderId, resultCode, message);
+          return;
         }
 
         // Also try to navigate to show result
@@ -155,9 +164,44 @@ class DeepLinkService {
     onPaymentResult = callback;
   }
 
+  void markPaymentHandled(String orderId, String resultCode, {String? message}) {
+    final key = _buildPaymentResultKey(orderId, resultCode, message);
+    _lastPaymentResultKey = key;
+    _lastPaymentResultAt = DateTime.now();
+  }
+
   /// Unregister payment result callback
   void unregisterPaymentCallback() {
     onPaymentResult = null;
+  }
+
+  bool _isDuplicatePaymentResult(
+    String orderId,
+    String resultCode,
+    String? message,
+  ) {
+    final key = _buildPaymentResultKey(orderId, resultCode, message);
+    final now = DateTime.now();
+    if (_lastPaymentResultKey == key &&
+        _lastPaymentResultAt != null &&
+        now.difference(_lastPaymentResultAt!) <= _paymentResultDedupeWindow) {
+      return true;
+    }
+    _lastPaymentResultKey = key;
+    _lastPaymentResultAt = now;
+    return false;
+  }
+
+  String _buildPaymentResultKey(
+    String orderId,
+    String resultCode,
+    String? message,
+  ) {
+    if (orderId.isNotEmpty) {
+      return '$orderId:$resultCode';
+    }
+    final messageKey = (message ?? '').trim();
+    return '${resultCode}:${messageKey.isNotEmpty ? messageKey : 'no-order'}';
   }
 
   /// Dispose the service

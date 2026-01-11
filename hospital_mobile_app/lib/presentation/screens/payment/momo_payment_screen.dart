@@ -32,6 +32,8 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
   bool _isLoading = true;
   bool _isCreatingPayment = true;
   String? _paymentUrl;
+  String? _orderId;
+  bool _hasHandledResult = false;
   String? _errorMessage;
   late WebViewController _webViewController;
   Timer? _checkTimer;
@@ -57,6 +59,9 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
     DeepLinkService().registerPaymentCallback((orderId, resultCode, message) {
       debugPrint('🎉 MoMo callback received via deep link!');
       debugPrint('Order ID: $orderId, Result Code: $resultCode');
+      if (orderId.isNotEmpty) {
+        _orderId ??= orderId;
+      }
       
       _checkTimer?.cancel();
       
@@ -70,8 +75,23 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
     });
   }
   
+  bool _markResultHandled(String resultCode, {String? message}) {
+    if (_hasHandledResult) return false;
+    _hasHandledResult = true;
+    _checkTimer?.cancel();
+    if (_orderId != null && _orderId!.isNotEmpty) {
+      DeepLinkService().markPaymentHandled(
+        _orderId!,
+        resultCode,
+        message: message,
+      );
+    }
+    return true;
+  }
+
   /// Handle payment success - refresh bill and show success dialog
   void _handlePaymentSuccess() async {
+    if (!_markResultHandled('0')) return;
     try {
       // Refresh bill status from server
       final provider = context.read<BillingProvider>();
@@ -123,6 +143,7 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
       debugPrint('MoMo payment created: orderId=${payment.orderId}');
       debugPrint('MoMo deeplink: ${payment.deeplink}');
       debugPrint('MoMo payUrl: ${payment.payUrl}');
+      _orderId = payment.orderId;
 
       // Try to open deeplink directly if available
       if (payment.deeplink.isNotEmpty) {
@@ -295,12 +316,15 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
       final message = uri.queryParameters['message'];
       
       debugPrint('Payment result: resultCode=$resultCode, orderId=$orderId, message=$message');
+      if (orderId != null && orderId.isNotEmpty) {
+        _orderId ??= orderId;
+      }
       
       _checkTimer?.cancel();
       
       if (resultCode == '0') {
         // Thanh toán thành công!
-        _showSuccessDialog();
+        _handlePaymentSuccess();
       } else {
         // Thanh toán thất bại
         _showFailureDialog(resultCode ?? 'unknown', message);
@@ -453,7 +477,7 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
 
       if (isCompleted && mounted) {
         _checkTimer?.cancel();
-        _showSuccessDialog();
+        _handlePaymentSuccess();
       }
     } catch (e) {
       debugPrint('Error checking bill status: $e');
@@ -500,6 +524,7 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
   }
 
   void _showFailureDialog(String resultCode, String? message) {
+    if (!_markResultHandled(resultCode, message: message)) return;
     showDialog(
       context: context,
       barrierDismissible: false,
