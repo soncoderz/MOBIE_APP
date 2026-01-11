@@ -20,7 +20,6 @@ const statisticsController = require('../controllers/statisticsController');
 
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
-const { getChatHistory, addIrrelevantQuestion } = require('../controllers/adminController');
 
 const medicationController = require('../controllers/medicationController');
 const cronController = require('../controllers/cronController');
@@ -35,8 +34,7 @@ const uploadToMemory = multer({ storage: storage });
 router.use(protect);
 router.use(authorize('admin'));
 
-router.get('/chat-history', getChatHistory); 
-router.post('/filter/add', addIrrelevantQuestion);
+
 // Doctor routes
 router.post('/doctors', doctorController.createDoctor);
 // Account management routes
