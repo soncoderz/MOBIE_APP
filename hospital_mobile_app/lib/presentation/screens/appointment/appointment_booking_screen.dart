@@ -561,6 +561,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
                       _selectedServiceId = null;
                     });
                     await _fetchSchedules();
+                    _calculatePrices(); // Update prices with selected doctor's fee
                   },
                 ),
               );
@@ -1650,8 +1651,22 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
   }
 
   void _calculatePrices() {
-    // This would normally fetch from API
-    _consultationFee = 200000; // Default consultation fee
+    // Get consultation fee from selected doctor
+    if (_selectedDoctorId != null) {
+      final doctorProvider = context.read<DoctorProvider>();
+      
+      // Try to find doctor in the doctors list
+      final doctor = doctorProvider.doctors.firstWhere(
+        (d) => d.id == _selectedDoctorId,
+        orElse: () => doctorProvider.selectedDoctor!,
+      );
+      
+      _consultationFee = doctor.consultationFee;
+    } else {
+      _consultationFee = 0;
+    }
+    
+    // Get service fee
     if (_selectedServiceId != null) {
       final serviceProvider = context.read<ServiceProvider>();
       final service = serviceProvider.services.firstWhere(
