@@ -10,37 +10,37 @@ const generateToken = async (userId) => {
   try {
     // Tìm thông tin user và populate hospitalId nếu là pharmacist
     const user = await User.findById(userId).select('roleType hospitalId').populate('hospitalId', 'name');
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     console.log('Generating token for user:', {
       userId,
       roleType: user.roleType,
       hospitalId: user.hospitalId
     });
-    
+
     // Prepare token payload
     const tokenPayload = {
       id: userId,
       role: user.roleType // Sử dụng roleType từ database thay vì 'user'
     };
-    
+
     // Include hospitalId in token for pharmacist
     if (user.roleType === 'pharmacist' && user.hospitalId) {
       tokenPayload.hospitalId = user.hospitalId._id || user.hospitalId;
     }
-    
+
     // JWT_SECRET được đảm bảo tồn tại vì đã kiểm tra trong server.js
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
       expiresIn: '1d' // Changed from 30d to 15m - 15 minutes
     });
-    
+
     // Test decode token để xác nhận thông tin
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Verified token contains:', decoded);
-    
+
     return token;
   } catch (error) {
     console.error('Error generating token:', error);
@@ -54,23 +54,23 @@ const generateToken = async (userId) => {
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { 
-      fullName, 
-      email, 
-      phoneNumber, 
-      password, 
-      dateOfBirth, 
-      gender, 
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      password,
+      dateOfBirth,
+      gender,
       address
     } = req.body;
 
     // Check if user already exists with the same email
     const emailExists = await User.findOne({ email });
     if (emailExists) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         field: 'email',
-        message: 'Email đã được sử dụng bởi tài khoản khác' 
+        message: 'Email đã được sử dụng bởi tài khoản khác'
       });
     }
 
@@ -78,15 +78,15 @@ exports.register = async (req, res) => {
     if (phoneNumber) {
       const phoneExists = await User.findOne({ phoneNumber });
       if (phoneExists) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
           field: 'phoneNumber',
-          message: 'Số điện thoại đã được sử dụng bởi tài khoản khác' 
+          message: 'Số điện thoại đã được sử dụng bởi tài khoản khác'
         });
       }
     }
 
-    // Create new user with isVerified = false
+    // Create new user with isVerified = true (auto-verified, no email verification needed)
     const user = await User.create({
       fullName,
       email,
@@ -96,62 +96,41 @@ exports.register = async (req, res) => {
       gender,
       address,
       roleType: 'user', // Always set roleType to 'user'
-      isVerified: false // Tài khoản chưa được xác thực
+      isVerified: true // Tự động xác thực, không cần email verification
     });
 
-    // Tạo token xác thực
-    const verificationToken = user.generateVerificationToken();
-    await user.save();
-
-    try {
-      // Gửi email xác thực
-      await sendVerificationEmail(email, verificationToken, fullName);
-      
-      return res.status(201).json({
-        success: true,
-        data: {
-          _id: user._id,
-          email: user.email,
-        },
-        message: 'Đăng ký tài khoản thành công. Vui lòng kiểm tra email để xác thực tài khoản.'
-      });
-    } catch (emailError) {
-      console.error('Lỗi gửi email xác thực:', emailError);
-      
-      // Vẫn tạo tài khoản nhưng thông báo lỗi gửi email
-      return res.status(201).json({
-        success: true,
-        data: {
-          _id: user._id,
-          email: user.email,
-        },
-        warning: true,
-        message: 'Đăng ký tài khoản thành công nhưng không thể gửi email xác thực. Vui lòng liên hệ với quản trị viên.'
-      });
-    }
+    // Return success response immediately
+    return res.status(201).json({
+      success: true,
+      data: {
+        _id: user._id,
+        email: user.email,
+      },
+      message: 'Đăng ký tài khoản thành công!'
+    });
 
   } catch (error) {
     console.error('Registration error:', error);
-    
+
     // Xử lý lỗi validation từ Mongoose
     if (error.name === 'ValidationError') {
       const validationErrors = {};
-      
+
       for (let field in error.errors) {
         validationErrors[field] = error.errors[field].message;
       }
-      
+
       return res.status(400).json({
         success: false,
         errors: validationErrors,
         message: 'Thông tin đăng ký không hợp lệ'
       });
     }
-    
-    return res.status(500).json({ 
+
+    return res.status(500).json({
       success: false,
-      message: 'Đăng ký không thành công. Vui lòng thử lại sau.', 
-      error: error.message 
+      message: 'Đăng ký không thành công. Vui lòng thử lại sau.',
+      error: error.message
     });
   }
 };
@@ -160,7 +139,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
-    
+
     // Kiểm tra nếu không có email hoặc password
     if (!email || !password) {
       return res.status(400).json({
@@ -168,11 +147,11 @@ exports.login = async (req, res) => {
         message: 'Vui lòng cung cấp đầy đủ email và mật khẩu'
       });
     }
-    
+
     // Xác định model cần sử dụng dựa vào role (nếu có)
     let user;
     let userModel;
-    
+
     if (role === 'doctor') {
       // Sử dụng model DoctorAccount nếu role là doctor
       const DoctorAccount = require('../models/DoctorAccount');
@@ -181,10 +160,10 @@ exports.login = async (req, res) => {
       // Mặc định sử dụng model User cho user và admin
       userModel = User;
     }
-    
+
     // Tìm user theo email
     user = await userModel.findOne({ email });
-    
+
     // Kiểm tra nếu user không tồn tại
     if (!user) {
       return res.status(401).json({
@@ -193,7 +172,7 @@ exports.login = async (req, res) => {
         message: 'Tài khoản hoặc mật khẩu không chính xác  '
       });
     }
-    
+
     // Validate pharmacist has hospitalId
     if (user.roleType === 'pharmacist' && !user.hospitalId) {
       return res.status(400).json({
@@ -201,26 +180,26 @@ exports.login = async (req, res) => {
         message: 'Dược sĩ chưa được gán vào chi nhánh. Vui lòng liên hệ quản trị viên.'
       });
     }
-    
+
     // Kiểm tra nếu tài khoản bị khóa
     if (user.isLocked) {
-      const lockMessage = user.lockReason 
-        ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.lockReason}` 
+      const lockMessage = user.lockReason
+        ? `Tài khoản của bạn đã bị khóa. Lý do: ${user.lockReason}`
         : 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.';
-      
+
       return res.status(403).json({
         success: false,
         message: lockMessage
       });
     }
-    
+
     // Kiểm tra xem email đã được xác thực chưa
     if (!user.isVerified) {
       // Tạo token xác thực mới nếu token cũ đã hết hạn
       if (!user.verificationToken || !user.verificationTokenExpires || user.verificationTokenExpires < Date.now()) {
         const verificationToken = user.generateVerificationToken();
         await user.save();
-        
+
         // Gửi lại email xác thực
         try {
           await sendVerificationEmail(user.email, verificationToken, user.fullName);
@@ -228,14 +207,14 @@ exports.login = async (req, res) => {
           console.error('Lỗi gửi lại email xác thực:', emailError);
         }
       }
-      
+
       return res.status(401).json({
         success: false,
         message: 'Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản.',
         needVerification: true
       });
     }
-    
+
     // Kiểm tra mật khẩu
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
@@ -245,21 +224,21 @@ exports.login = async (req, res) => {
         message: 'Tài khoản hoặc mật khẩu không chính xác'
       });
     }
-    
+
     // Tạo JWT token dựa vào role
     let token;
     let userRole;
-    
+
     if (role === 'doctor') {
       // Token cho bác sĩ
-      token = jwt.sign({ 
-        id: user._id, 
-        role: 'doctor' 
+      token = jwt.sign({
+        id: user._id,
+        role: 'doctor'
       }, process.env.JWT_SECRET, {
         expiresIn: '1d'
       });
       userRole = 'doctor';
-      
+
       console.log('Generating token for user:', {
         userId: user._id,
         roleType: 'doctor'
@@ -267,19 +246,19 @@ exports.login = async (req, res) => {
     } else {
       // Token cho user thông thường hoặc admin
       userRole = user.roleType || 'user';
-      token = jwt.sign({ 
-        id: user._id, 
-        role: userRole 
+      token = jwt.sign({
+        id: user._id,
+        role: userRole
       }, process.env.JWT_SECRET, {
         expiresIn: '1d'
       });
-      
+
       console.log('Generating token for user:', {
         userId: user._id,
         roleType: userRole
       });
     }
-    
+
     // Verify JWT token sau khi tạo
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -287,14 +266,14 @@ exports.login = async (req, res) => {
     } catch (jwtError) {
       console.error('Error verifying token:', jwtError);
     }
-    
+
     // Log user đăng nhập
     console.log('User logging in:', {
       id: user._id,
       email: user.email,
       avatarUrl: user.avatarUrl || 'No avatar'
     });
-    
+
     // Trả về thông tin user và token
     return res.status(200).json({
       success: true,
@@ -313,13 +292,13 @@ exports.login = async (req, res) => {
       },
       message: 'Đăng nhập thành công'
     });
-    
+
   } catch (error) {
     console.error('User login error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: 'Lỗi đăng nhập',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -360,14 +339,14 @@ exports.forgotPassword = async (req, res) => {
     // Generate OTP
     const otp = user.generateOTP();
     await user.save();
-    
+
     // Log OTP for development/debugging
     console.log('Generated OTP:', otp);
 
     try {
       // Send OTP email
       await sendOtpEmail(email, otp);
-      
+
       res.status(200).json({
         success: true,
         message: 'Mã OTP đã được gửi đến email của bạn',
@@ -375,7 +354,7 @@ exports.forgotPassword = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Error sending email:', emailError);
-      
+
       // Vẫn lưu OTP nhưng thông báo người dùng về lỗi gửi email
       res.status(500).json({
         success: false,
@@ -436,7 +415,7 @@ exports.verifyOtp = async (req, res) => {
     // Verify JWT token and extract OTP
     try {
       const decodedToken = jwt.verify(user.otpCode, process.env.JWT_SECRET || 'fallback-secret-key');
-      
+
       // Check if the provided OTP matches the one in the token
       if (decodedToken.otp !== otp) {
         return res.status(400).json({
@@ -444,7 +423,7 @@ exports.verifyOtp = async (req, res) => {
           message: 'Mã OTP không chính xác'
         });
       }
-      
+
       // Check if the user ID in token matches the current user
       if (decodedToken.userId !== user._id.toString()) {
         return res.status(400).json({
@@ -542,7 +521,7 @@ exports.resetPassword = async (req, res) => {
 
     // Set new password
     user.passwordHash = password;
-    
+
     // Clear reset token fields
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
@@ -585,29 +564,29 @@ exports.resetPassword = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
         message: 'Token xác thực không được cung cấp'
       });
     }
-    
+
     console.log('Verifying token:', token);
-    
+
     // Hash token để so sánh với token đã lưu trong database
     const hashedToken = crypto
       .createHash('sha256')
       .update(token)
       .digest('hex');
-      
+
     console.log('Hashed token:', hashedToken);
-    
+
     // Tìm user với token xác thực
     const user = await User.findOne({
       verificationToken: hashedToken
     });
-    
+
     if (!user) {
       console.log('User not found with token');
       return res.status(400).json({
@@ -615,9 +594,9 @@ exports.verifyEmail = async (req, res) => {
         message: 'Token xác thực không hợp lệ'
       });
     }
-    
+
     console.log('Found user:', user.email);
-    
+
     // Kiểm tra thời hạn của token
     if (user.verificationTokenExpires && user.verificationTokenExpires < Date.now()) {
       console.log('Token expired');
@@ -627,18 +606,18 @@ exports.verifyEmail = async (req, res) => {
         expired: true
       });
     }
-    
+
     // Xác thực tài khoản
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
-    
+
     await user.save();
     console.log('User verified successfully');
-    
+
     // Generate token cho user đã xác thực
     const authToken = await generateToken(user._id);
-    
+
     console.log('Sending success response');
     return res.status(200).json({
       success: true,
@@ -652,7 +631,7 @@ exports.verifyEmail = async (req, res) => {
         roleType: user.roleType
       }
     });
-    
+
   } catch (error) {
     console.error('Email verification error:', error);
     return res.status(500).json({
@@ -667,17 +646,17 @@ exports.verifyEmail = async (req, res) => {
 exports.resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email) {
       return res.status(400).json({
         success: false,
         message: 'Email là bắt buộc'
       });
     }
-    
+
     // Find user by email
     const user = await User.findOne({ email });
-    
+
     // Check if user exists
     if (!user) {
       return res.status(404).json({
@@ -685,7 +664,7 @@ exports.resendVerification = async (req, res) => {
         message: 'Không tìm thấy tài khoản với email này'
       });
     }
-    
+
     // Check if already verified
     if (user.isVerified) {
       return res.status(400).json({
@@ -693,28 +672,28 @@ exports.resendVerification = async (req, res) => {
         message: 'Tài khoản này đã được xác thực'
       });
     }
-    
+
     // Generate new verification token
     const verificationToken = user.generateVerificationToken();
     await user.save();
-    
+
     // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken, user.fullName);
-      
+
       return res.status(200).json({
         success: true,
         message: 'Email xác thực đã được gửi lại thành công'
       });
     } catch (emailError) {
       console.error('Lỗi gửi lại email xác thực:', emailError);
-      
+
       return res.status(500).json({
         success: false,
         message: 'Không thể gửi email xác thực. Vui lòng thử lại sau.'
       });
     }
-    
+
   } catch (error) {
     console.error('Resend verification error:', error);
     return res.status(500).json({
@@ -798,18 +777,18 @@ exports.socialLoginSuccess = async (req, res) => {
   try {
     // Generate token for the authenticated user
     const token = await generateToken(req.user._id);
-    
+
     // Get the frontend URL from environment variables
-    const frontendURL = process.env.FRONTEND_URL ;
-    
+    const frontendURL = process.env.FRONTEND_URL;
+
     // Determine if user is new and needs password
-    const isNewUser = req.user.createdAt && 
-                      new Date().getTime() - new Date(req.user.createdAt).getTime() < 60000; // < 1 minute
-    
+    const isNewUser = req.user.createdAt &&
+      new Date().getTime() - new Date(req.user.createdAt).getTime() < 60000; // < 1 minute
+
     // User needs password if they don't have passwordHash and are using social auth
-    const needPassword = !req.user.passwordHash && 
-                        (req.user.googleId || req.user.facebookId);
-    
+    const needPassword = !req.user.passwordHash &&
+      (req.user.googleId || req.user.facebookId);
+
     // Log user data for debugging
     console.log('Social login user data:', {
       id: req.user._id,
@@ -820,7 +799,7 @@ exports.socialLoginSuccess = async (req, res) => {
       needPassword: needPassword,
       hasPasswordHash: !!req.user.passwordHash
     });
-    
+
     // Return token as URL parameter for client-side handling
     // Redirect to the frontend with the token and user data
     const userData = {
@@ -837,13 +816,13 @@ exports.socialLoginSuccess = async (req, res) => {
       needPassword: needPassword,
       token
     };
-    
+
     // Log the successful authentication
     console.log(`Social login successful for user: ${req.user.email} with provider: ${req.user.authProvider}`);
-    
+
     // Encode the data for URL transmission
     const userDataParam = encodeURIComponent(JSON.stringify(userData));
-    
+
     // Redirect to the frontend with the token
     return res.redirect(`${frontendURL}/auth/social-callback?data=${userDataParam}`);
   } catch (error) {
@@ -886,11 +865,11 @@ exports.googleTokenVerification = async (req, res) => {
     // Check if user exists with this Google ID or email
     let user = await User.findOne({ googleId: userData.sub });
     let isNewUser = false;
-    
+
     if (!user) {
       // Check if user exists with this email
       user = await User.findOne({ email: userData.email });
-      
+
       if (user) {
         // Link Google account to existing user
         user.googleId = userData.sub;
@@ -957,14 +936,14 @@ exports.googleTokenVerification = async (req, res) => {
 exports.facebookTokenVerification = async (req, res) => {
   try {
     const { accessToken, userID } = req.body;
-    
+
     if (!accessToken || !userID) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing access token or user ID' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing access token or user ID'
       });
     }
-    
+
     // Verify token with Facebook Graph API
     const response = await axios.get(`https://graph.facebook.com/v19.0/me`, {
       params: {
@@ -972,26 +951,26 @@ exports.facebookTokenVerification = async (req, res) => {
         fields: 'id,name,email,picture'
       }
     });
-    
+
     // Response from Facebook API
     const userData = response.data;
-    
+
     if (userData.id !== userID) {
       return res.status(400).json({
         success: false,
         message: 'User ID mismatch'
       });
     }
-    
+
     // Find or create user
     const User = require('../models/User');
     let user = await User.findOne({ facebookId: userData.id });
     let isNewUser = false;
-    
+
     if (!user) {
       // Check if user exists with this email
       user = await User.findOne({ email: userData.email });
-      
+
       if (user) {
         // Link Facebook account to existing user
         user.facebookId = userData.id;
@@ -1117,10 +1096,10 @@ exports.refreshToken = async (req, res) => {
   try {
     // Sử dụng ID người dùng từ request (đã được middleware protect xác thực)
     const userId = req.user._id;
-    
+
     // Tạo token mới
     const token = await generateToken(userId);
-    
+
     // Trả về token mới
     return res.status(200).json({
       success: true,

@@ -54,8 +54,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           response.statusCode,
         );
       }
+    } on DioException catch (e) {
+      // Handle server validation errors (status 400)
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        final data = e.response!.data;
+        final message = data['message'] ?? 'Đăng ký thất bại';
+        final field = data['field'] as String?;
+        
+        throw FieldValidationException(
+          message,
+          field: field,
+          statusCode: 400,
+        );
+      }
+      throw ServerException('Đăng ký thất bại: ${e.message}');
     } catch (e) {
-      if (e is ServerException) rethrow;
+      if (e is ServerException || e is FieldValidationException) rethrow;
       throw ServerException('Đăng ký thất bại: ${e.toString()}');
     }
   }
@@ -76,8 +90,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           response.statusCode,
         );
       }
+    } on DioException catch (e) {
+      // Handle 401 with needVerification flag
+      if (e.response?.statusCode == 401 && e.response?.data != null) {
+        final data = e.response!.data;
+        final needVerification = data['needVerification'] == true;
+        final message = data['message'] ?? 'Đăng nhập thất bại';
+        
+        if (needVerification) {
+          throw EmailNotVerifiedException(message, 401);
+        }
+        
+        // Check for field-specific error
+        final field = data['field'] as String?;
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: 401);
+        }
+        
+        throw AuthenticationException(message, 401);
+      }
+      throw ServerException('Đăng nhập thất bại: ${e.message}');
     } catch (e) {
-      if (e is ServerException) rethrow;
+      if (e is ServerException || e is EmailNotVerifiedException || 
+          e is AuthenticationException || e is FieldValidationException) rethrow;
       throw ServerException('Đăng nhập thất bại: ${e.toString()}');
     }
   }

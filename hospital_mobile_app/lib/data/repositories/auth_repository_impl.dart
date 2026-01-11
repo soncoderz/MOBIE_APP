@@ -21,6 +21,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String fullName,
     String? phone,
+    String? gender,
+    String? dateOfBirth,
+    String? address,
   }) async {
     try {
       // Check network connectivity
@@ -34,15 +37,15 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         fullName: fullName,
         phone: phone,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
+        address: address,
       );
 
       final response = await _remoteDataSource.register(dto);
 
-      // Save token
-      await _tokenStorage.saveToken(response.token);
-      await _tokenStorage.saveUserData(response.user);
-
-      // Convert to user model and entity
+      // Don't save token - user needs to verify email first before logging in
+      // Just return success with user data
       final userModel = UserModel.fromJson(response.user);
       return Right(userModel.toEntity());
     } catch (e) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_constants.dart';
 import 'package:bot_toast/bot_toast.dart';
@@ -183,6 +184,16 @@ class MyApp extends StatelessWidget {
             elevation: 0,
           ),
         ),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('vi', 'VN'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('vi', 'VN'),
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashScreen(),

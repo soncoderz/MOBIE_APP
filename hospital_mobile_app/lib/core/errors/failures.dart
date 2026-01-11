@@ -30,6 +30,21 @@ class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
 
+/// Field validation failure - when a specific field has validation error
+class FieldValidationFailure extends Failure {
+  final String? field;
+  
+  const FieldValidationFailure(super.message, {this.field});
+  
+  @override
+  List<Object> get props => [message, field ?? ''];
+}
+
+/// Email not verified failure - when user tries to login without verifying email
+class EmailNotVerifiedFailure extends Failure {
+  const EmailNotVerifiedFailure(super.message);
+}
+
 /// Cache failure - when local cache operations fail
 class CacheFailure extends Failure {
   const CacheFailure(super.message);
