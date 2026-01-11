@@ -93,6 +93,12 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> wit
     _selectedSpecialtyId = widget.specialtyId;
     _selectedDoctorId = widget.doctorId;
     _selectedServiceId = widget.serviceId;
+    
+    // Auto-skip to step 1 immediately if doctor is pre-selected
+    if (widget.doctorId != null && 
+        (widget.hospitalId != null || widget.specialtyId != null)) {
+      _currentStep = 1;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _userId = context.read<AuthProvider>().user?.id;
