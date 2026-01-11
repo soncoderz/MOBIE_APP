@@ -14,6 +14,7 @@ class CustomTextField extends StatefulWidget {
   final int maxLines;
   final bool enabled;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   const CustomTextField({
     super.key,
@@ -28,6 +29,7 @@ class CustomTextField extends StatefulWidget {
     this.maxLines = 1,
     this.enabled = true,
     this.onTap,
+    this.onChanged,
   });
 
   @override
@@ -65,6 +67,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           maxLines: widget.maxLines,
           enabled: widget.enabled,
           onTap: widget.onTap,
+          onChanged: widget.onChanged,
           decoration: InputDecoration(
             hintText: widget.hint,
             prefixIcon: widget.prefixIcon,

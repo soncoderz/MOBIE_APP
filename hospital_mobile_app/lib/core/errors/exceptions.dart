@@ -29,6 +29,19 @@ class ValidationException extends AppException {
   ValidationException(super.message);
 }
 
+/// Field validation exception - thrown when a specific field has validation error
+class FieldValidationException extends AppException {
+  final String? field;
+  
+  FieldValidationException(String message, {this.field, int? statusCode}) 
+      : super(message, statusCode);
+}
+
+/// Email not verified exception - thrown when user tries to login without verifying email
+class EmailNotVerifiedException extends AppException {
+  EmailNotVerifiedException(super.message, [super.statusCode]);
+}
+
 /// Cache exception - thrown when cache operations fail
 class CacheException extends AppException {
   CacheException(super.message);

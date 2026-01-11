@@ -63,20 +63,12 @@ class Message extends Equatable {
     if (json['senderId'] is Map) {
       senderId = json['senderId']['_id'] ?? json['senderId']['id'] ?? '';
     } else {
-      senderId = json['senderId']?.toString() ?? '';
-    }
-
-    // Handle conversationId which can be string or ObjectId object
-    String conversationId;
-    if (json['conversationId'] is Map) {
-      conversationId = json['conversationId']['_id'] ?? json['conversationId']['id'] ?? '';
-    } else {
-      conversationId = json['conversationId']?.toString() ?? '';
+      senderId = json['senderId'] ?? '';
     }
 
     return Message(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      conversationId: conversationId,
+      id: json['_id'] ?? json['id'] ?? '',
+      conversationId: json['conversationId'] ?? '',
       senderId: senderId,
       content: json['content'] ?? '',
       attachments: json['attachments'] != null
@@ -85,7 +77,7 @@ class Message extends Equatable {
               .toList()
           : null,
       appointmentData: json['appointmentData'],
-      isRead: json['isRead'] ?? json['readAt'] != null,
+      isRead: json['isRead'] ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),

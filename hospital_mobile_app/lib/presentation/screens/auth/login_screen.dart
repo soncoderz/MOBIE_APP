@@ -46,8 +46,52 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, '/home');
       AppToast.success(AppConstants.loginSuccessMessage);
     } else {
-      AppToast.error(authProvider.errorMessage ?? 'Đăng nhập thất bại');
+      // Check if needs email verification
+      if (authProvider.needsEmailVerification) {
+        _showEmailVerificationDialog();
+      } else {
+        AppToast.error(authProvider.errorMessage ?? 'Đăng nhập thất bại');
+      }
     }
+  }
+
+  void _showEmailVerificationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.email_outlined, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Text('Xác thực email'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Tài khoản của bạn chưa được xác thực.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleGoogleSignIn() async {
