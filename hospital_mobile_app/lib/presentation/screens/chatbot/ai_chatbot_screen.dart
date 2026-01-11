@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/models/chatbot_model.dart';
 import '../../providers/chatbot_provider.dart';
 
@@ -333,33 +334,42 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   Widget _buildDoctorCard(ChatbotDoctorItem doctor) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blue.shade100,
-          child: Icon(Icons.person, color: Colors.blue.shade700),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/doctor-detail', arguments: doctor.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.blue.shade100,
+            backgroundImage: doctor.avatar != null
+                ? CachedNetworkImageProvider(doctor.avatar!)
+                : null,
+            child: doctor.avatar == null
+                ? Icon(Icons.person, color: Colors.blue.shade700)
+                : null,
+          ),
+          title: Text(
+            '${doctor.title} ${doctor.name}',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(doctor.specialty),
+              Row(
+                children: [
+                  Icon(Icons.star, size: 14, color: Colors.amber.shade700),
+                  const SizedBox(width: 4),
+                  Text('${doctor.rating.toStringAsFixed(1)} (${doctor.ratingCount} đánh giá)'),
+                ],
+              ),
+            ],
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+          isThreeLine: true,
         ),
-        title: Text(
-          '${doctor.title} ${doctor.name}',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(doctor.specialty),
-            Row(
-              children: [
-                Icon(Icons.star, size: 14, color: Colors.amber.shade700),
-                const SizedBox(width: 4),
-                Text('${doctor.rating.toStringAsFixed(1)} (${doctor.ratingCount} đánh giá)'),
-              ],
-            ),
-          ],
-        ),
-        trailing: Text(
-          '${doctor.experience} năm KN',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-        ),
-        isThreeLine: true,
       ),
     );
   }
@@ -367,47 +377,81 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   Widget _buildHospitalCard(ChatbotHospitalItem hospital) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green.shade100,
-          child: Icon(Icons.local_hospital, color: Colors.green.shade700),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                hospital.name,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            if (hospital.isMainHospital)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/hospital-detail', arguments: hospital.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: hospital.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: hospital.imageUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.green.shade100,
+                      child: Icon(Icons.local_hospital, color: Colors.green.shade700),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.green.shade100,
+                      child: Icon(Icons.local_hospital, color: Colors.green.shade700),
+                    ),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.local_hospital, color: Colors.green.shade700),
+                  ),
+          ),
+          title: Row(
+            children: [
+              Expanded(
                 child: Text(
-                  'Trụ sở chính',
-                  style: TextStyle(fontSize: 10, color: Colors.blue.shade700),
+                  hospital.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-          ],
+              if (hospital.isMainHospital)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Trụ sở chính',
+                    style: TextStyle(fontSize: 10, color: Colors.blue.shade700),
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(hospital.address, maxLines: 2),
+              Row(
+                children: [
+                  Icon(Icons.star, size: 14, color: Colors.amber.shade700),
+                  const SizedBox(width: 4),
+                  Text('${hospital.rating.toStringAsFixed(1)}/5'),
+                ],
+              ),
+            ],
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+          isThreeLine: true,
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(hospital.address, maxLines: 2),
-            Row(
-              children: [
-                Icon(Icons.star, size: 14, color: Colors.amber.shade700),
-                const SizedBox(width: 4),
-                Text('${hospital.rating.toStringAsFixed(1)}/5'),
-              ],
-            ),
-          ],
-        ),
-        isThreeLine: true,
       ),
     );
   }
@@ -436,35 +480,49 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: statusColor.withOpacity(0.1),
-          child: Icon(Icons.calendar_today, color: statusColor),
-        ),
-        title: Text(
-          'Mã: ${appointment.bookingCode}',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${dateFormat.format(appointment.date)} - ${appointment.timeSlot?['startTime'] ?? 'N/A'}'),
-            Text('BS: ${appointment.doctor}'),
-            Text('BV: ${appointment.hospital}'),
-          ],
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/appointment-detail', arguments: appointment.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: statusColor.withOpacity(0.1),
+            child: Icon(Icons.calendar_today, color: statusColor),
           ),
-          child: Text(
-            appointment.statusDisplay,
-            style: TextStyle(color: statusColor, fontSize: 11),
+          title: Text(
+            'Mã: ${appointment.bookingCode}',
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${dateFormat.format(appointment.date)} - ${appointment.timeSlot?['startTime'] ?? 'N/A'}'),
+              Text('BS: ${appointment.doctor}'),
+              Text('BV: ${appointment.hospital}'),
+            ],
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  appointment.statusDisplay,
+                  style: TextStyle(color: statusColor, fontSize: 11),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+            ],
+          ),
+          isThreeLine: true,
         ),
-        isThreeLine: true,
       ),
     );
   }
@@ -474,30 +532,70 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
     
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.purple.shade100,
-          child: Icon(Icons.medical_services, color: Colors.purple.shade700),
-        ),
-        title: Text(
-          service.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(service.specialty),
-            Text('${service.duration} phút'),
-          ],
-        ),
-        trailing: Text(
-          priceFormat.format(service.price),
-          style: TextStyle(
-            color: Colors.green.shade700,
-            fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/service-detail', arguments: service.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: service.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: service.imageUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.purple.shade100,
+                      child: Icon(Icons.medical_services, color: Colors.purple.shade700),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.purple.shade100,
+                      child: Icon(Icons.medical_services, color: Colors.purple.shade700),
+                    ),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.medical_services, color: Colors.purple.shade700),
+                  ),
           ),
+          title: Text(
+            service.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(service.specialty),
+              Text('${service.duration} phút'),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                priceFormat.format(service.price),
+                style: TextStyle(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
+          isThreeLine: true,
         ),
-        isThreeLine: true,
       ),
     );
   }
@@ -505,18 +603,52 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
   Widget _buildSpecialtyCard(ChatbotSpecialtyItem specialty) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.orange.shade100,
-          child: Icon(Icons.category, color: Colors.orange.shade700),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/specialty-detail', arguments: specialty.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: specialty.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: specialty.imageUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.orange.shade100,
+                      child: Icon(Icons.category, color: Colors.orange.shade700),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.orange.shade100,
+                      child: Icon(Icons.category, color: Colors.orange.shade700),
+                    ),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.category, color: Colors.orange.shade700),
+                  ),
+          ),
+          title: Text(
+            specialty.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: specialty.description != null
+              ? Text(specialty.description!, maxLines: 2)
+              : null,
+          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         ),
-        title: Text(
-          specialty.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: specialty.description != null
-            ? Text(specialty.description!, maxLines: 2)
-            : null,
       ),
     );
   }

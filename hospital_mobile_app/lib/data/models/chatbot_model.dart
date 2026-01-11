@@ -105,6 +105,7 @@ class ChatbotResponseModel {
 class ChatbotDoctorItem {
   final String id;
   final String name;
+  final String? avatar;
   final String title;
   final String specialty;
   final String hospital;
@@ -117,6 +118,7 @@ class ChatbotDoctorItem {
   ChatbotDoctorItem({
     required this.id,
     required this.name,
+    this.avatar,
     required this.title,
     required this.specialty,
     required this.hospital,
@@ -128,9 +130,19 @@ class ChatbotDoctorItem {
   });
 
   factory ChatbotDoctorItem.fromJson(Map<String, dynamic> json) {
+    // Handle avatar which can be a string or an object {url, secureUrl}
+    String? avatarUrl;
+    final avatarData = json['avatar'];
+    if (avatarData is String) {
+      avatarUrl = avatarData;
+    } else if (avatarData is Map) {
+      avatarUrl = avatarData['url'] ?? avatarData['secureUrl'];
+    }
+    
     return ChatbotDoctorItem(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? 'Không xác định',
+      avatar: avatarUrl,
       title: json['title'] ?? '',
       specialty: json['specialty'] ?? 'Chưa xác định',
       hospital: json['hospital'] ?? 'Chưa xác định',
@@ -149,6 +161,7 @@ class ChatbotHospitalItem {
   final String name;
   final String address;
   final String? phone;
+  final String? imageUrl;
   final double rating;
   final bool isMainHospital;
   final List<String> specialties;
@@ -158,17 +171,28 @@ class ChatbotHospitalItem {
     required this.name,
     required this.address,
     this.phone,
+    this.imageUrl,
     required this.rating,
     required this.isMainHospital,
     required this.specialties,
   });
 
   factory ChatbotHospitalItem.fromJson(Map<String, dynamic> json) {
+    // Handle imageUrl which can be a string or an object {url, secureUrl}
+    String? imageUrl;
+    final imageData = json['imageUrl'];
+    if (imageData is String) {
+      imageUrl = imageData;
+    } else if (imageData is Map) {
+      imageUrl = imageData['url'] ?? imageData['secureUrl'];
+    }
+    
     return ChatbotHospitalItem(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
       phone: json['phone'],
+      imageUrl: imageUrl,
       rating: (json['rating'] ?? 0).toDouble(),
       isMainHospital: json['isMainHospital'] ?? false,
       specialties: (json['specialties'] as List<dynamic>?)
@@ -251,6 +275,7 @@ class ChatbotServiceItem {
   final int duration;
   final String specialty;
   final String type;
+  final String? imageUrl;
 
   ChatbotServiceItem({
     required this.id,
@@ -260,9 +285,19 @@ class ChatbotServiceItem {
     required this.duration,
     required this.specialty,
     required this.type,
+    this.imageUrl,
   });
 
   factory ChatbotServiceItem.fromJson(Map<String, dynamic> json) {
+    // Handle imageUrl which can be a string or an object {url, secureUrl}
+    String? imageUrl;
+    final imageData = json['imageUrl'];
+    if (imageData is String) {
+      imageUrl = imageData;
+    } else if (imageData is Map) {
+      imageUrl = imageData['url'] ?? imageData['secureUrl'];
+    }
+    
     return ChatbotServiceItem(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
@@ -271,6 +306,7 @@ class ChatbotServiceItem {
       duration: json['duration'] ?? 30,
       specialty: json['specialty'] ?? 'Chưa xác định',
       type: json['type'] ?? 'examination',
+      imageUrl: imageUrl,
     );
   }
 }
@@ -281,20 +317,32 @@ class ChatbotSpecialtyItem {
   final String name;
   final String? description;
   final String? icon;
+  final String? imageUrl;
 
   ChatbotSpecialtyItem({
     required this.id,
     required this.name,
     this.description,
     this.icon,
+    this.imageUrl,
   });
 
   factory ChatbotSpecialtyItem.fromJson(Map<String, dynamic> json) {
+    // Handle imageUrl which can be a string or an object {url, secureUrl}
+    String? imageUrl;
+    final imageData = json['imageUrl'];
+    if (imageData is String) {
+      imageUrl = imageData;
+    } else if (imageData is Map) {
+      imageUrl = imageData['url'] ?? imageData['secureUrl'];
+    }
+    
     return ChatbotSpecialtyItem(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'],
       icon: json['icon'],
+      imageUrl: imageUrl,
     );
   }
 }

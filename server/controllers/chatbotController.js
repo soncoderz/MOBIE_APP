@@ -31,6 +31,7 @@ const getDoctorsList = async (filters = {}) => {
         return doctors.map(doc => ({
             id: doc._id,
             name: doc.user?.fullName || 'Không xác định',
+            avatar: doc.user?.avatar || null,
             title: doc.title,
             specialty: doc.specialtyId?.name || 'Chưa xác định',
             hospital: doc.hospitalId?.name || 'Chưa xác định',
@@ -60,6 +61,7 @@ const getHospitalsList = async () => {
             name: h.name,
             address: h.address,
             phone: h.contactInfo?.phone,
+            imageUrl: h.imageUrl || h.image?.url || h.image?.secureUrl || null,
             rating: h.ratings?.average || 0,
             isMainHospital: h.isMainHospital,
             specialties: h.specialties?.map(s => s.name) || []
@@ -81,7 +83,8 @@ const getSpecialtiesList = async () => {
             id: s._id,
             name: s.name,
             description: s.description,
-            icon: s.icon
+            icon: s.icon,
+            imageUrl: s.imageUrl || s.image?.url || s.image?.secureUrl || null
         }));
     } catch (error) {
         console.error('Error fetching specialties:', error);
@@ -109,7 +112,8 @@ const getServicesList = async (filters = {}) => {
             price: s.price,
             duration: s.duration,
             specialty: s.specialtyId?.name || 'Chưa xác định',
-            type: s.type
+            type: s.type,
+            imageUrl: s.imageUrl || s.image?.url || s.image?.secureUrl || null
         }));
     } catch (error) {
         console.error('Error fetching services:', error);
@@ -174,6 +178,7 @@ const getTopRatedDoctors = async (limit = 5) => {
         return doctors.map(doc => ({
             id: doc._id,
             name: doc.user?.fullName || 'Không xác định',
+            avatar: doc.user?.avatar || null,
             title: doc.title,
             specialty: doc.specialtyId?.name || 'Chưa xác định',
             hospital: doc.hospitalId?.name || 'Chưa xác định',
@@ -372,7 +377,7 @@ Nếu có dữ liệu được cung cấp, hãy tóm tắt và trình bày dễ 
         }
 
         // Generate AI response
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
         const prompt = `${systemContext}\n\nCâu hỏi của người dùng: ${message}`;
 
