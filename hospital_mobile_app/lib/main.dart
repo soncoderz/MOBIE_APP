@@ -25,6 +25,7 @@ import 'data/repositories/hospital_repository_impl.dart';
 import 'data/repositories/news_repository_impl.dart';
 import 'data/repositories/review_repository_impl.dart';
 import 'data/repositories/statistics_repository_impl.dart';
+import 'data/repositories/chat_repository_impl.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/doctor_provider.dart';
 import 'presentation/providers/specialty_provider.dart';
@@ -35,6 +36,7 @@ import 'presentation/providers/news_provider.dart';
 import 'presentation/providers/review_provider.dart';
 import 'presentation/providers/statistics_provider.dart';
 import 'presentation/providers/billing_provider.dart';
+import 'presentation/providers/chat_provider.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
@@ -55,6 +57,12 @@ import 'presentation/screens/profile/profile_screen.dart';
 import 'presentation/screens/services/service_detail_screen.dart';
 import 'presentation/screens/specialties/specialty_detail_screen.dart';
 import 'presentation/screens/hospitals/hospital_detail_screen.dart';
+import 'presentation/screens/chat/chat_screen.dart';
+import 'presentation/screens/chat/conversation_list_screen.dart';
+import 'presentation/screens/chatbot/ai_chatbot_screen.dart';
+import 'data/datasources/chatbot_remote_data_source.dart';
+import 'data/repositories/chatbot_repository.dart';
+import 'presentation/providers/chatbot_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -165,6 +173,23 @@ class MyApp extends StatelessWidget {
             PaymentRemoteDataSourceImpl(dioClient),
           ),
         ),
+
+        // Chat Provider
+        ChangeNotifierProvider(
+          create: (_) => ChatProvider(
+            chatRepository: ChatRepositoryImpl(dioClient),
+            tokenStorage: tokenStorage,
+          ),
+        ),
+
+        // AI Chatbot Provider
+        ChangeNotifierProvider(
+          create: (_) => ChatbotProvider(
+            ChatbotRepositoryImpl(
+              ChatbotRemoteDataSourceImpl(dioClient),
+            ),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -194,6 +219,8 @@ class MyApp extends StatelessWidget {
           '/appointments': (context) => const AppointmentsScreen(),
           '/news': (context) => const NewsListScreen(),
           '/profile': (context) => const ProfileScreen(),
+          '/conversations': (context) => const ConversationListScreen(),
+          '/ai-chatbot': (context) => const AIChatbotScreen(),
         },
         onGenerateRoute: (settings) {
           // Handle routes with arguments

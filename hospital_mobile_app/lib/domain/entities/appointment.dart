@@ -5,6 +5,7 @@ class Appointment extends Equatable {
   final String patientId;
   final String patientName;
   final String doctorId;
+  final String? doctorUserId; // User ID of the doctor (for chat)
   final String doctorName;
   final String specialtyName;
   final String? hospitalName;
@@ -26,6 +27,7 @@ class Appointment extends Equatable {
     required this.patientId,
     required this.patientName,
     required this.doctorId,
+    this.doctorUserId,
     required this.doctorName,
     required this.specialtyName,
     this.hospitalName,
@@ -49,6 +51,7 @@ class Appointment extends Equatable {
         patientId,
         patientName,
         doctorId,
+        doctorUserId,
         doctorName,
         specialtyName,
         hospitalName,

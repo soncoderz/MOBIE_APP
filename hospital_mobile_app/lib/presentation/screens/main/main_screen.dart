@@ -183,6 +183,14 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.chat),
+            title: const Text('Tin nhắn'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/conversations');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.article),
             title: const Text('Tin tức'),
             onTap: () {

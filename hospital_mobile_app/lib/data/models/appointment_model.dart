@@ -6,6 +6,7 @@ class AppointmentModel extends Appointment {
     required super.patientId,
     required super.patientName,
     required super.doctorId,
+    super.doctorUserId,
     required super.doctorName,
     required super.specialtyName,
     super.hospitalName,
@@ -76,6 +77,7 @@ class AppointmentModel extends Appointment {
     // Handle doctorId - can be String or Object
     String doctorIdValue = '';
     String doctorNameValue = '';
+    String? doctorUserIdValue;
     final doctorField = json['doctorId'];
     if (doctorField is String) {
       doctorIdValue = doctorField;
@@ -83,6 +85,14 @@ class AppointmentModel extends Appointment {
     } else if (doctorField is Map<String, dynamic>) {
       doctorIdValue = doctorField['_id'] ?? doctorField['id'] ?? '';
       doctorNameValue = doctorField['fullName'] ?? doctorField['user']?['fullName'] ?? '';
+      // Extract doctor's userId (for chat)
+      if (doctorField['user'] is Map<String, dynamic>) {
+        doctorUserIdValue = doctorField['user']['_id'] ?? doctorField['user']['id'];
+      } else if (doctorField['user'] is String) {
+        doctorUserIdValue = doctorField['user'];
+      } else if (doctorField['userId'] != null) {
+        doctorUserIdValue = doctorField['userId'];
+      }
     }
     
     // Also check 'doctor' field
@@ -90,6 +100,14 @@ class AppointmentModel extends Appointment {
       final doctor = json['doctor'] as Map<String, dynamic>;
       doctorIdValue = doctor['_id'] ?? doctor['id'] ?? doctorIdValue;
       doctorNameValue = doctor['fullName'] ?? doctor['user']?['fullName'] ?? doctorNameValue;
+      // Extract doctor's userId (for chat)
+      if (doctor['user'] is Map<String, dynamic>) {
+        doctorUserIdValue = doctor['user']['_id'] ?? doctor['user']['id'];
+      } else if (doctor['user'] is String) {
+        doctorUserIdValue = doctor['user'];
+      } else if (doctor['userId'] != null) {
+        doctorUserIdValue = doctor['userId'];
+      }
     }
     
     // Handle specialtyName - can be String or Object
@@ -232,6 +250,7 @@ class AppointmentModel extends Appointment {
         patientId: patientIdValue.isEmpty ? 'unknown' : patientIdValue,
         patientName: patientNameValue.isEmpty ? 'Bệnh nhân' : patientNameValue,
         doctorId: doctorIdValue.isEmpty ? 'unknown' : doctorIdValue,
+        doctorUserId: doctorUserIdValue,
         doctorName: doctorNameValue.isEmpty ? 'Bác sĩ' : doctorNameValue,
         specialtyName: specialtyNameValue.isEmpty ? 'Chuyên khoa' : specialtyNameValue,
         hospitalName: hospitalNameValue,
@@ -262,6 +281,7 @@ class AppointmentModel extends Appointment {
       'patientId': patientId,
       'patientName': patientName,
       'doctorId': doctorId,
+      'doctorUserId': doctorUserId,
       'doctorName': doctorName,
       'specialtyName': specialtyName,
       'appointmentDate': appointmentDate.toIso8601String(),
@@ -280,6 +300,7 @@ class AppointmentModel extends Appointment {
         patientId: patientId,
         patientName: patientName,
         doctorId: doctorId,
+        doctorUserId: doctorUserId,
         doctorName: doctorName,
         specialtyName: specialtyName,
         hospitalName: hospitalName,
