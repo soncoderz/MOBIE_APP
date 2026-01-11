@@ -371,7 +371,11 @@ class AuthProvider extends ChangeNotifier {
 
     return result.fold(
       (failure) {
-        _setError(ErrorHandler.getErrorMessage(failure));
+        if (failure is FieldValidationFailure) {
+          _setError(failure.message, field: failure.field);
+        } else {
+          _setError(ErrorHandler.getErrorMessage(failure));
+        }
         _setLoading(false);
         return false;
       },

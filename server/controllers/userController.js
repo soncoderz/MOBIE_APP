@@ -9,7 +9,7 @@ exports.getUserProfile = async (req, res) => {
     // Populate hospitalId for pharmacist
     const userRole = req.user.roleType || req.user.role;
     const populateOptions = (userRole === 'pharmacist' || userRole === 'doctor') ? 'hospitalId' : '';
-    
+
     // Lấy thông tin người dùng hiện tại, bỏ qua mật khẩu và populate hospitalId nếu cần
     let user;
     if (populateOptions) {
@@ -20,14 +20,14 @@ exports.getUserProfile = async (req, res) => {
       user = await User.findById(req.user.id)
         .select('-passwordHash -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -otpCode -otpExpires');
     }
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy người dùng'
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       data: user
@@ -46,24 +46,56 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
   try {
     const { fullName, phoneNumber, dateOfBirth, gender, address } = req.body;
-    
+
+    console.log('Update profile request:', { fullName, phoneNumber, dateOfBirth, gender, address, userId: req.user.id });
+
+    // Validate fullName
+    if (!fullName || fullName.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        field: 'fullName',
+        message: 'Họ và tên là bắt buộc'
+      });
+    }
+
     // Không cho phép thay đổi email vì email là định danh tài khoản
     if (req.body.email) {
       delete req.body.email;
     }
-    
+
     // Không cho phép thay đổi vai trò
     if (req.body.roleType) {
       delete req.body.roleType;
     }
-    
+
+    // Validate gender if provided
+    if (gender && !['male', 'female', 'other'].includes(gender)) {
+      return res.status(400).json({
+        success: false,
+        field: 'gender',
+        message: 'Giới tính không hợp lệ'
+      });
+    }
+
+    // Validate dateOfBirth if provided
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      if (isNaN(dob.getTime())) {
+        return res.status(400).json({
+          success: false,
+          field: 'dateOfBirth',
+          message: 'Ngày sinh không hợp lệ'
+        });
+      }
+    }
+
     // Kiểm tra số điện thoại mới có trùng không
-    if (phoneNumber) {
-      const phoneExists = await User.findOne({ 
-        phoneNumber, 
+    if (phoneNumber && phoneNumber.trim().length > 0) {
+      const phoneExists = await User.findOne({
+        phoneNumber: phoneNumber.trim(),
         _id: { $ne: req.user.id } // Loại trừ user hiện tại
       });
-      
+
       if (phoneExists) {
         return res.status(400).json({
           success: false,
@@ -72,21 +104,32 @@ exports.updateUserProfile = async (req, res) => {
         });
       }
     }
-    
+
+    // Build update object - only include fields that are provided
+    const updateData = { fullName: fullName.trim() };
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber ? phoneNumber.trim() : null;
+    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+    if (gender !== undefined) updateData.gender = gender;
+    if (address !== undefined) updateData.address = address ? address.trim() : null;
+
+    console.log('Update data:', updateData);
+
     // Cập nhật thông tin người dùng
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
-      { fullName, phoneNumber, dateOfBirth, gender, address },
+      updateData,
       { new: true, runValidators: true }
-    ).select('-passwordHash');
-    
+    ).select('-passwordHash -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -otpCode -otpExpires');
+
     if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy người dùng'
       });
     }
-    
+
+    console.log('Profile updated successfully for user:', updatedUser.email);
+
     return res.status(200).json({
       success: true,
       data: updatedUser,
@@ -94,22 +137,38 @@ exports.updateUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Update user profile error:', error);
-    
+
     // Xử lý lỗi validation từ Mongoose
     if (error.name === 'ValidationError') {
       const validationErrors = {};
-      
+      let firstField = null;
+      let firstMessage = 'Thông tin cập nhật không hợp lệ';
+
       for (let field in error.errors) {
         validationErrors[field] = error.errors[field].message;
+        if (!firstField) {
+          firstField = field;
+          firstMessage = error.errors[field].message;
+        }
       }
-      
+
       return res.status(400).json({
         success: false,
+        field: firstField,
         errors: validationErrors,
-        message: 'Thông tin cập nhật không hợp lệ'
+        message: firstMessage
       });
     }
-    
+
+    // Xử lý lỗi CastError (ví dụ: dateOfBirth không đúng định dạng)
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        field: error.path,
+        message: `Giá trị không hợp lệ cho trường ${error.path}`
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi cập nhật thông tin người dùng',
@@ -118,75 +177,76 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
+
 // POST /api/user/avatar – Upload ảnh đại diện người dùng
 exports.uploadAvatar = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vui lòng tải lên một tệp ảnh' 
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng tải lên một tệp ảnh'
       });
     }
-    
+
     // Log the file information for debugging
     console.log('Avatar upload request received:', {
       filename: req.file.originalname,
       mimetype: req.file.mimetype,
       size: `${(req.file.size / 1024).toFixed(2)} KB`
     });
-    
+
     // Sử dụng Cloudinary để tải ảnh lên
     const { uploadImage, deleteImage } = require('../config/cloudinary');
-    
+
     // Log Cloudinary environment variables for debugging
     console.log('Cloudinary Config Check:', {
       cloudName: process.env.CLOUDINARY_CLOUD_NAME || 'NOT SET',
       apiKey: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
       apiSecret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
     });
-    
+
     // Lấy user hiện tại để kiểm tra và xóa ảnh cũ nếu cần
     const user = await User.findById(req.user.id);
     console.log('User found for avatar update:', user._id);
-    
+
     // Xóa ảnh cũ trên Cloudinary nếu có
     if (user.avatar && user.avatar.publicId) {
       console.log('Deleting old avatar with publicId:', user.avatar.publicId);
       await deleteImage(user.avatar.publicId);
     }
-    
+
     // Tạo buffer từ dữ liệu file trong memory
     const buffer = req.file.buffer;
-    
+
     // Tạo base64 string từ buffer để tải lên Cloudinary
     const base64String = `data:${req.file.mimetype};base64,${buffer.toString('base64')}`;
-    
+
     console.log('Uploading to Cloudinary using base64 data');
-    
+
     // Tải ảnh mới lên Cloudinary sử dụng base64
     const cloudinaryResult = await uploadImage(base64String, `avatars/${req.user.id}`);
     console.log('Cloudinary upload successful:', cloudinaryResult);
-    
+
     // Cập nhật thông tin avatar trong DB
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
-      { 
+      {
         avatar: cloudinaryResult,
         avatarUrl: cloudinaryResult.secureUrl, // Cập nhật đường dẫn với URL từ Cloudinary
         avatarData: null  // Xóa dữ liệu base64 cũ nếu có
       },
       { new: true }
     ).select('-passwordHash');
-    
+
     if (!updatedUser) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Không tìm thấy người dùng' 
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng'
       });
     }
-    
+
     console.log('Avatar updated successfully for user:', updatedUser.email);
-    
+
     // Trả về toàn bộ thông tin user đã cập nhật
     return res.status(200).json({
       success: true,
@@ -195,10 +255,10 @@ exports.uploadAvatar = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload avatar error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Lỗi khi tải lên ảnh đại diện', 
-      error: error.message 
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tải lên ảnh đại diện',
+      error: error.message
     });
   }
 };
@@ -213,22 +273,22 @@ exports.getAllUsers = async (req, res) => {
         message: 'Không có quyền truy cập danh sách người dùng'
       });
     }
-    
-    const { 
-      role, 
-      verified, 
-      search, 
-      page = 1, 
+
+    const {
+      role,
+      verified,
+      search,
+      page = 1,
       limit = 10,
       sort = 'createdAt',
       order = 'desc',
       roleType,
       isLocked
     } = req.query;
-    
+
     // Xây dựng query
     const query = {};
-    
+
     // Lọc theo vai trò - ưu tiên tham số roleType nếu có
     if (roleType) {
       if (roleType.includes(',')) {
@@ -241,21 +301,21 @@ exports.getAllUsers = async (req, res) => {
       // Sử dụng tham số role nếu không có roleType
       query.roleType = role;
     }
-    
+
     // Lọc theo trạng thái
     if (isLocked === 'true' || isLocked === true) {
       query.isLocked = true;
     } else if (isLocked === 'false' || isLocked === false) {
       query.isLocked = false;
     }
-    
+
     // Lọc theo trạng thái xác thực
     if (verified === 'true') {
       query.isVerified = true;
     } else if (verified === 'false') {
       query.isVerified = false;
     }
-    
+
     // Tìm kiếm theo tên hoặc email
     if (search) {
       query.$or = [
@@ -264,16 +324,16 @@ exports.getAllUsers = async (req, res) => {
         { phoneNumber: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     console.log('Query tìm kiếm người dùng:', query);
-    
+
     // Tính pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Xác định field sort và thứ tự
     const sortOptions = {};
     sortOptions[sort] = order === 'asc' ? 1 : -1;
-    
+
     // Thực hiện query
     const users = await User.find(query)
       .select('-passwordHash -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -otpCode -otpExpires')
@@ -281,10 +341,10 @@ exports.getAllUsers = async (req, res) => {
       .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit));
-    
+
     // Đếm tổng số người dùng thỏa mãn điều kiện
     const total = await User.countDocuments(query);
-    
+
     return res.status(200).json({
       success: true,
       count: users.length,
@@ -461,11 +521,11 @@ exports.deleteUser = async (req, res) => {
     if (user.roleType === 'doctor') {
       const Doctor = require('../models/Doctor');
       const doctor = await Doctor.findOne({ user: userId });
-      
+
       if (doctor) {
         // Check for existing appointments before deleting
         const Appointment = require('../models/Appointment');
-        const appointments = await Appointment.find({ 
+        const appointments = await Appointment.find({
           doctorId: doctor._id,
           status: { $in: ['scheduled', 'confirmed'] }
         });
@@ -508,7 +568,7 @@ exports.lockUserAccount = async (req, res) => {
   try {
     const { id } = req.params;
     const { lockReason } = req.body;
-    
+
     // Yêu cầu bắt buộc phải nhập lý do
     if (!lockReason || lockReason.trim() === '') {
       return res.status(400).json({
@@ -516,14 +576,14 @@ exports.lockUserAccount = async (req, res) => {
         message: 'Vui lòng nhập lý do khóa tài khoản'
       });
     }
-    
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: 'ID người dùng không hợp lệ'
       });
     }
-    
+
     // Check if user exists
     const user = await User.findById(id);
     if (!user) {
@@ -532,7 +592,7 @@ exports.lockUserAccount = async (req, res) => {
         message: 'Không tìm thấy người dùng'
       });
     }
-    
+
     // Prevent locking admin accounts
     if (user.roleType === 'admin') {
       return res.status(403).json({
@@ -540,12 +600,12 @@ exports.lockUserAccount = async (req, res) => {
         message: 'Không thể khóa tài khoản quản trị viên'
       });
     }
-    
+
     // Update user to locked status
     user.isLocked = true;
     user.lockReason = lockReason;
     await user.save();
-    
+
     return res.status(200).json({
       success: true,
       message: 'Đã khóa tài khoản người dùng thành công'
@@ -568,14 +628,14 @@ exports.lockUserAccount = async (req, res) => {
 exports.unlockUserAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: 'ID người dùng không hợp lệ'
       });
     }
-    
+
     // Check if user exists
     const user = await User.findById(id);
     if (!user) {
@@ -584,12 +644,12 @@ exports.unlockUserAccount = async (req, res) => {
         message: 'Không tìm thấy người dùng'
       });
     }
-    
+
     // Update user to unlocked status
     user.isLocked = false;
     user.lockReason = undefined; // Clear the lock reason
     await user.save();
-    
+
     return res.status(200).json({
       success: true,
       message: 'Đã mở khóa tài khoản người dùng thành công'
@@ -664,7 +724,7 @@ exports.createPharmacist = async (req, res) => {
     });
   } catch (error) {
     console.error('Create pharmacist error:', error);
-    
+
     // Handle validation errors
     if (error.name === 'ValidationError') {
       const validationErrors = {};
@@ -702,7 +762,7 @@ exports.getUserAvatar = async (req, res) => {
         message: 'ID người dùng không hợp lệ'
       });
     }
-    
+
     // Permission check: Only allow if the requester is retrieving their own avatar or is an admin
     if (req.user.id !== userId && req.user.roleType !== 'admin') {
       return res.status(403).json({
@@ -737,5 +797,5 @@ exports.getUserAvatar = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};
 

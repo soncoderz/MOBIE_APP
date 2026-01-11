@@ -292,29 +292,55 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? dateOfBirth,
   }) async {
     try {
+      // Format dateOfBirth to only include date part if it's a full ISO string
+      String? formattedDateOfBirth = dateOfBirth;
+      if (dateOfBirth != null && dateOfBirth.contains('T')) {
+        formattedDateOfBirth = dateOfBirth.split('T').first;
+      }
+      
       final data = {
         'fullName': fullName,
-        if (phoneNumber != null) 'phoneNumber': phoneNumber,
+        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phoneNumber': phoneNumber,
         if (address != null) 'address': address,
         if (gender != null) 'gender': gender,
-        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+        if (formattedDateOfBirth != null) 'dateOfBirth': formattedDateOfBirth,
       };
 
       final response = await _dioClient.put(
         ApiConstants.updateProfile,
         data: data,
+        options: Options(
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
 
       if (response.statusCode == 200) {
         return UserModel.fromJson(response.data['data'] ?? response.data);
       } else {
-        throw ServerException(
-          response.data['message'] ?? 'Cập nhật thông tin thất bại',
-          response.statusCode,
-        );
+        // Extract error message from server response
+        final message = response.data['message'] ?? 'Cập nhật thông tin thất bại';
+        final field = response.data['field'] as String?;
+        
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: response.statusCode);
+        }
+        throw ServerException(message, response.statusCode);
       }
+    } on DioException catch (e) {
+      // Handle server validation errors (status 400)
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        final data = e.response!.data;
+        final message = data['message'] ?? 'Cập nhật thông tin thất bại';
+        final field = data['field'] as String?;
+        
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: 400);
+        }
+        throw ServerException(message, 400);
+      }
+      throw ServerException('Cập nhật thông tin thất bại: ${e.message}');
     } catch (e) {
-      if (e is ServerException) rethrow;
+      if (e is ServerException || e is FieldValidationException) rethrow;
       throw ServerException('Cập nhật thông tin thất bại: ${e.toString()}');
     }
   }
