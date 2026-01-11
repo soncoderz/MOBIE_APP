@@ -66,6 +66,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await _dioClient.post(
         ApiConstants.login,
         data: dto.toJson(),
+        options: Options(
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -78,6 +81,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
     } catch (e) {
       if (e is ServerException) rethrow;
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        String message = 'Đăng nhập thất bại';
+        if (data is Map<String, dynamic>) {
+          message = data['message'] ?? data['error'] ?? message;
+        } else if (e.message?.isNotEmpty == true) {
+          message = e.message!;
+        }
+
+        // Bubble auth-specific errors so UI can show server message
+        if (status == 401) {
+          throw AuthenticationException(message, status);
+        }
+        throw ServerException(message, status);
+      }
       throw ServerException('Đăng nhập thất bại: ${e.toString()}');
     }
   }
