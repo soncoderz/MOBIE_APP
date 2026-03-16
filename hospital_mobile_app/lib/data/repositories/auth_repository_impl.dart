@@ -21,6 +21,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String fullName,
     String? phone,
+    String? gender,
+    String? dateOfBirth,
+    String? address,
   }) async {
     try {
       // Check network connectivity
@@ -34,15 +37,15 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         fullName: fullName,
         phone: phone,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
+        address: address,
       );
 
       final response = await _remoteDataSource.register(dto);
 
-      // Save token
-      await _tokenStorage.saveToken(response.token);
-      await _tokenStorage.saveUserData(response.user);
-
-      // Convert to user model and entity
+      // Don't save token - user needs to verify email first before logging in
+      // Just return success with user data
       final userModel = UserModel.fromJson(response.user);
       return Right(userModel.toEntity());
     } catch (e) {
@@ -160,7 +163,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> verifyOtp({
+  Future<Either<Failure, String>> verifyOtp({
     required String email,
     required String otp,
   }) async {
@@ -172,8 +175,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final dto = VerifyOtpDto(email: email, otp: otp);
-      await _remoteDataSource.verifyOtp(dto);
-      return const Right(null);
+      final resetToken = await _remoteDataSource.verifyOtp(dto);
+      return Right(resetToken);
     } catch (e) {
       return Left(ErrorHandler.handleException(e as Exception));
     }
@@ -181,8 +184,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, void>> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   }) async {
     try {
@@ -193,9 +195,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final dto = ResetPasswordDto(
-        email: email,
-        otp: otp,
-        newPassword: newPassword,
+        resetToken: resetToken,
+        password: newPassword,
       );
       await _remoteDataSource.resetPassword(dto);
       return const Right(null);

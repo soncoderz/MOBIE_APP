@@ -20,12 +20,16 @@ class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _errorField;
+  bool _needsEmailVerification = false;
 
   // Getters
   User? get user => _user;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get errorField => _errorField;
+  bool get needsEmailVerification => _needsEmailVerification;
 
   /// Set loading state
   void _setLoading(bool value) {
@@ -34,14 +38,18 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Set error message
-  void _setError(String? message) {
+  void _setError(String? message, {String? field, bool needsVerification = false}) {
     _errorMessage = message;
+    _errorField = field;
+    _needsEmailVerification = needsVerification;
     notifyListeners();
   }
 
   /// Clear error message
   void clearError() {
     _errorMessage = null;
+    _errorField = null;
+    _needsEmailVerification = false;
     notifyListeners();
   }
 
@@ -51,6 +59,9 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String fullName,
     String? phone,
+    String? gender,
+    String? dateOfBirth,
+    String? address,
   }) async {
     _setLoading(true);
     _setError(null);
@@ -60,11 +71,18 @@ class AuthProvider extends ChangeNotifier {
       password: password,
       fullName: fullName,
       phone: phone,
+      gender: gender,
+      dateOfBirth: dateOfBirth,
+      address: address,
     );
 
     return result.fold(
       (failure) {
-        _setError(ErrorHandler.getErrorMessage(failure));
+        if (failure is FieldValidationFailure) {
+          _setError(failure.message, field: failure.field);
+        } else {
+          _setError(ErrorHandler.getErrorMessage(failure));
+        }
         _setLoading(false);
         return false;
       },
@@ -92,7 +110,11 @@ class AuthProvider extends ChangeNotifier {
 
     return result.fold(
       (failure) {
-        _setError(ErrorHandler.getErrorMessage(failure));
+        if (failure is EmailNotVerifiedFailure) {
+          _setError(failure.message, needsVerification: true);
+        } else {
+          _setError(ErrorHandler.getErrorMessage(failure));
+        }
         _setLoading(false);
         return false;
       },
@@ -147,8 +169,8 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
-  /// Verify OTP
-  Future<bool> verifyOtp({
+  /// Verify OTP - returns resetToken on success
+  Future<String?> verifyOtp({
     required String email,
     required String otp,
   }) async {
@@ -164,27 +186,25 @@ class AuthProvider extends ChangeNotifier {
       (failure) {
         _setError(ErrorHandler.getErrorMessage(failure));
         _setLoading(false);
-        return false;
+        return null;
       },
-      (_) {
+      (resetToken) {
         _setLoading(false);
-        return true;
+        return resetToken;
       },
     );
   }
 
   /// Reset password
   Future<bool> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   }) async {
     _setLoading(true);
     _setError(null);
 
     final result = await _authRepository.resetPassword(
-      email: email,
-      otp: otp,
+      resetToken: resetToken,
       newPassword: newPassword,
     );
 
@@ -349,7 +369,11 @@ class AuthProvider extends ChangeNotifier {
 
     return result.fold(
       (failure) {
-        _setError(ErrorHandler.getErrorMessage(failure));
+        if (failure is FieldValidationFailure) {
+          _setError(failure.message, field: failure.field);
+        } else {
+          _setError(ErrorHandler.getErrorMessage(failure));
+        }
         _setLoading(false);
         return false;
       },

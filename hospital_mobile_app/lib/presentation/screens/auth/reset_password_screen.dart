@@ -8,13 +8,11 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
-  final String email;
-  final String otp;
+  final String resetToken;
 
   const ResetPasswordScreen({
     super.key,
-    required this.email,
-    required this.otp,
+    required this.resetToken,
   });
 
   @override
@@ -40,8 +38,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.resetPassword(
-      email: widget.email,
-      otp: widget.otp,
+      resetToken: widget.resetToken,
       newPassword: _passwordController.text,
     );
 

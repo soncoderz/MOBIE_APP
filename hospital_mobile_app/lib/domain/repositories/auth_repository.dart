@@ -9,6 +9,9 @@ abstract class AuthRepository {
     required String password,
     required String fullName,
     String? phone,
+    String? gender,
+    String? dateOfBirth,
+    String? address,
   });
 
   Future<Either<Failure, User>> login({
@@ -29,14 +32,13 @@ abstract class AuthRepository {
     required String email,
   });
 
-  Future<Either<Failure, void>> verifyOtp({
+  Future<Either<Failure, String>> verifyOtp({
     required String email,
     required String otp,
   });
 
   Future<Either<Failure, void>> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   });
 

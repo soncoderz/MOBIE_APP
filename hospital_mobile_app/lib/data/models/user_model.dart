@@ -19,17 +19,39 @@ class UserModel extends User {
 
   /// Create UserModel from JSON
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle avatar field - can be String, Map, or null
+    String? avatarValue;
+    final avatarData = json['avatar'];
+    if (avatarData is String) {
+      avatarValue = avatarData;
+    } else if (avatarData is Map<String, dynamic>) {
+      // Server returns avatar as an object with url/secureUrl
+      avatarValue = avatarData['secureUrl'] ?? avatarData['url'];
+    }
+    
+    // Handle dateOfBirth field - can be String, DateTime ISO string, or null
+    String? dateOfBirthValue;
+    final dobData = json['dateOfBirth'];
+    if (dobData is String) {
+      // If it's a full ISO string with time, extract just the date part
+      if (dobData.contains('T')) {
+        dateOfBirthValue = dobData.split('T').first;
+      } else {
+        dateOfBirthValue = dobData;
+      }
+    }
+    
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
       email: json['email'] ?? '',
       fullName: json['fullName'] ?? '',
-      phone: json['phone'],
-      phoneNumber: json['phoneNumber'],
-      avatar: json['avatar'],
-      avatarUrl: json['avatarUrl'],
-      address: json['address'],
-      gender: json['gender'],
-      dateOfBirth: json['dateOfBirth'],
+      phone: json['phone'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
+      avatar: avatarValue,
+      avatarUrl: json['avatarUrl'] as String?,
+      address: json['address'] as String?,
+      gender: json['gender'] as String?,
+      dateOfBirth: dateOfBirthValue,
       role: json['role'] ?? json['roleType'] ?? 'patient',
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])

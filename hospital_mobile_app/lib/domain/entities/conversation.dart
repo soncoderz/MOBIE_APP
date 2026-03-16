@@ -31,16 +31,8 @@ class Conversation extends Equatable {
       }
     }
 
-    // Handle id which can be string or ObjectId object
-    String id;
-    if (json['_id'] is Map) {
-      id = json['_id']['\$oid'] ?? json['_id']['_id'] ?? json['_id'].toString();
-    } else {
-      id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
-    }
-
     return Conversation(
-      id: id,
+      id: json['_id'] ?? json['id'] ?? '',
       participants: json['participants'] != null
           ? (json['participants'] as List)
               .map((p) => ChatParticipant.fromJson(p))

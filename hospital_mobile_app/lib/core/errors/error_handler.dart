@@ -73,6 +73,10 @@ class ErrorHandler {
   static Failure handleException(Exception exception) {
     if (exception is DioException) {
       return handleDioError(exception);
+    } else if (exception is EmailNotVerifiedException) {
+      return EmailNotVerifiedFailure(exception.message);
+    } else if (exception is FieldValidationException) {
+      return FieldValidationFailure(exception.message, field: exception.field);
     } else if (exception is ServerException) {
       return ServerFailure(exception.message);
     } else if (exception is NetworkException) {

@@ -12,7 +12,7 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponse> googleLogin(GoogleLoginDto dto);
   Future<AuthResponse> facebookLogin(FacebookLoginDto dto);
   Future<void> forgotPassword(ForgotPasswordDto dto);
-  Future<void> verifyOtp(VerifyOtpDto dto);
+  Future<String> verifyOtp(VerifyOtpDto dto);
   Future<void> resetPassword(ResetPasswordDto dto);
   Future<void> verifyEmail(VerifyEmailDto dto);
   Future<void> resendVerification(String email);
@@ -54,8 +54,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           response.statusCode,
         );
       }
+    } on DioException catch (e) {
+      // Handle server validation errors (status 400)
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        final data = e.response!.data;
+        final message = data['message'] ?? 'Đăng ký thất bại';
+        final field = data['field'] as String?;
+        
+        throw FieldValidationException(
+          message,
+          field: field,
+          statusCode: 400,
+        );
+      }
+      throw ServerException('Đăng ký thất bại: ${e.message}');
     } catch (e) {
-      if (e is ServerException) rethrow;
+      if (e is ServerException || e is FieldValidationException) rethrow;
       throw ServerException('Đăng ký thất bại: ${e.toString()}');
     }
   }
@@ -79,24 +93,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           response.statusCode,
         );
       }
-    } catch (e) {
-      if (e is ServerException) rethrow;
-      if (e is DioException) {
-        final status = e.response?.statusCode;
-        final data = e.response?.data;
-        String message = 'Đăng nhập thất bại';
-        if (data is Map<String, dynamic>) {
-          message = data['message'] ?? data['error'] ?? message;
-        } else if (e.message?.isNotEmpty == true) {
-          message = e.message!;
+    } on DioException catch (e) {
+      // Handle 401 with needVerification flag
+      if (e.response?.statusCode == 401 && e.response?.data != null) {
+        final data = e.response!.data;
+        final needVerification = data['needVerification'] == true;
+        final message = data['message'] ?? 'Đăng nhập thất bại';
+        
+        if (needVerification) {
+          throw EmailNotVerifiedException(message, 401);
         }
-
-        // Bubble auth-specific errors so UI can show server message
-        if (status == 401) {
-          throw AuthenticationException(message, status);
+        
+        // Check for field-specific error
+        final field = data['field'] as String?;
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: 401);
         }
-        throw ServerException(message, status);
+        
+        throw AuthenticationException(message, 401);
       }
+      throw ServerException('Đăng nhập thất bại: ${e.message}');
+    } catch (e) {
+      if (e is ServerException || e is EmailNotVerifiedException || 
+          e is AuthenticationException || e is FieldValidationException) rethrow;
       throw ServerException('Đăng nhập thất bại: ${e.toString()}');
     }
   }
@@ -166,14 +185,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> verifyOtp(VerifyOtpDto dto) async {
+  Future<String> verifyOtp(VerifyOtpDto dto) async {
     try {
       final response = await _dioClient.post(
         ApiConstants.verifyOtp,
         data: dto.toJson(),
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 200) {
+        // Return the resetToken from the response
+        return response.data['resetToken'] as String;
+      } else {
         throw ServerException(
           response.data['message'] ?? 'Xác thực OTP thất bại',
           response.statusCode,
@@ -273,29 +295,55 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? dateOfBirth,
   }) async {
     try {
+      // Format dateOfBirth to only include date part if it's a full ISO string
+      String? formattedDateOfBirth = dateOfBirth;
+      if (dateOfBirth != null && dateOfBirth.contains('T')) {
+        formattedDateOfBirth = dateOfBirth.split('T').first;
+      }
+      
       final data = {
         'fullName': fullName,
-        if (phoneNumber != null) 'phoneNumber': phoneNumber,
+        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phoneNumber': phoneNumber,
         if (address != null) 'address': address,
         if (gender != null) 'gender': gender,
-        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+        if (formattedDateOfBirth != null) 'dateOfBirth': formattedDateOfBirth,
       };
 
       final response = await _dioClient.put(
         ApiConstants.updateProfile,
         data: data,
+        options: Options(
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
 
       if (response.statusCode == 200) {
         return UserModel.fromJson(response.data['data'] ?? response.data);
       } else {
-        throw ServerException(
-          response.data['message'] ?? 'Cập nhật thông tin thất bại',
-          response.statusCode,
-        );
+        // Extract error message from server response
+        final message = response.data['message'] ?? 'Cập nhật thông tin thất bại';
+        final field = response.data['field'] as String?;
+        
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: response.statusCode);
+        }
+        throw ServerException(message, response.statusCode);
       }
+    } on DioException catch (e) {
+      // Handle server validation errors (status 400)
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        final data = e.response!.data;
+        final message = data['message'] ?? 'Cập nhật thông tin thất bại';
+        final field = data['field'] as String?;
+        
+        if (field != null) {
+          throw FieldValidationException(message, field: field, statusCode: 400);
+        }
+        throw ServerException(message, 400);
+      }
+      throw ServerException('Cập nhật thông tin thất bại: ${e.message}');
     } catch (e) {
-      if (e is ServerException) rethrow;
+      if (e is ServerException || e is FieldValidationException) rethrow;
       throw ServerException('Cập nhật thông tin thất bại: ${e.toString()}');
     }
   }

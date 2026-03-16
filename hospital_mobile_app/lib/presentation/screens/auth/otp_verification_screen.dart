@@ -35,22 +35,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     }
 
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.verifyOtp(
+    final resetToken = await authProvider.verifyOtp(
       email: widget.email,
       otp: _otpController.text.trim(),
     );
 
     if (!mounted) return;
 
-    if (success) {
+    if (resetToken != null) {
       AppToast.success('Xác thực OTP thành công');
-      // Navigate to reset password screen
+      // Navigate to reset password screen with resetToken
       Navigator.pushReplacementNamed(
         context,
         '/reset-password',
         arguments: {
-          'email': widget.email,
-          'otp': _otpController.text.trim(),
+          'resetToken': resetToken,
         },
       );
     } else {

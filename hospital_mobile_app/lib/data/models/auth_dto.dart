@@ -22,12 +22,18 @@ class RegisterDto {
   final String password;
   final String fullName;
   final String? phone;
+  final String? gender;
+  final String? dateOfBirth;
+  final String? address;
 
   RegisterDto({
     required this.email,
     required this.password,
     required this.fullName,
     this.phone,
+    this.gender,
+    this.dateOfBirth,
+    this.address,
   });
 
   Map<String, dynamic> toJson() {
@@ -36,6 +42,9 @@ class RegisterDto {
       'password': password,
       'fullName': fullName,
       if (phone != null) 'phoneNumber': phone,
+      if (gender != null) 'gender': gender,
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+      if (address != null) 'address': address,
     };
   }
 }
@@ -104,21 +113,18 @@ class VerifyOtpDto {
 
 /// Data Transfer Object for reset password request
 class ResetPasswordDto {
-  final String email;
-  final String otp;
-  final String newPassword;
+  final String resetToken;
+  final String password;
 
   ResetPasswordDto({
-    required this.email,
-    required this.otp,
-    required this.newPassword,
+    required this.resetToken,
+    required this.password,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'email': email,
-      'otp': otp,
-      'newPassword': newPassword,
+      'resetToken': resetToken,
+      'password': password,
     };
   }
 }
