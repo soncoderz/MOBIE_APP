@@ -169,8 +169,8 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
-  /// Verify OTP
-  Future<bool> verifyOtp({
+  /// Verify OTP - returns resetToken on success
+  Future<String?> verifyOtp({
     required String email,
     required String otp,
   }) async {
@@ -186,27 +186,25 @@ class AuthProvider extends ChangeNotifier {
       (failure) {
         _setError(ErrorHandler.getErrorMessage(failure));
         _setLoading(false);
-        return false;
+        return null;
       },
-      (_) {
+      (resetToken) {
         _setLoading(false);
-        return true;
+        return resetToken;
       },
     );
   }
 
   /// Reset password
   Future<bool> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   }) async {
     _setLoading(true);
     _setError(null);
 
     final result = await _authRepository.resetPassword(
-      email: email,
-      otp: otp,
+      resetToken: resetToken,
       newPassword: newPassword,
     );
 

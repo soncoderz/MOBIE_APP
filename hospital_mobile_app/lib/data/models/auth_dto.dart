@@ -113,21 +113,18 @@ class VerifyOtpDto {
 
 /// Data Transfer Object for reset password request
 class ResetPasswordDto {
-  final String email;
-  final String otp;
-  final String newPassword;
+  final String resetToken;
+  final String password;
 
   ResetPasswordDto({
-    required this.email,
-    required this.otp,
-    required this.newPassword,
+    required this.resetToken,
+    required this.password,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'email': email,
-      'otp': otp,
-      'newPassword': newPassword,
+      'resetToken': resetToken,
+      'password': password,
     };
   }
 }

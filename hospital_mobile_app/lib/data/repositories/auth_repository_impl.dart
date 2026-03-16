@@ -163,7 +163,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> verifyOtp({
+  Future<Either<Failure, String>> verifyOtp({
     required String email,
     required String otp,
   }) async {
@@ -175,8 +175,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final dto = VerifyOtpDto(email: email, otp: otp);
-      await _remoteDataSource.verifyOtp(dto);
-      return const Right(null);
+      final resetToken = await _remoteDataSource.verifyOtp(dto);
+      return Right(resetToken);
     } catch (e) {
       return Left(ErrorHandler.handleException(e as Exception));
     }
@@ -184,8 +184,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, void>> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   }) async {
     try {
@@ -196,9 +195,8 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final dto = ResetPasswordDto(
-        email: email,
-        otp: otp,
-        newPassword: newPassword,
+        resetToken: resetToken,
+        password: newPassword,
       );
       await _remoteDataSource.resetPassword(dto);
       return const Right(null);

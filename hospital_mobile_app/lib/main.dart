@@ -242,11 +242,10 @@ class MyApp extends StatelessWidget {
             );
           }
           if (settings.name == '/reset-password') {
-            final args = settings.arguments as Map<String, String>;
+            final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (context) => ResetPasswordScreen(
-                email: args['email']!,
-                otp: args['otp']!,
+                resetToken: args['resetToken']!,
               ),
             );
           }

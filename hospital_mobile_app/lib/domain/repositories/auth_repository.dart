@@ -32,14 +32,13 @@ abstract class AuthRepository {
     required String email,
   });
 
-  Future<Either<Failure, void>> verifyOtp({
+  Future<Either<Failure, String>> verifyOtp({
     required String email,
     required String otp,
   });
 
   Future<Either<Failure, void>> resetPassword({
-    required String email,
-    required String otp,
+    required String resetToken,
     required String newPassword,
   });
 

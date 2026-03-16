@@ -12,7 +12,7 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponse> googleLogin(GoogleLoginDto dto);
   Future<AuthResponse> facebookLogin(FacebookLoginDto dto);
   Future<void> forgotPassword(ForgotPasswordDto dto);
-  Future<void> verifyOtp(VerifyOtpDto dto);
+  Future<String> verifyOtp(VerifyOtpDto dto);
   Future<void> resetPassword(ResetPasswordDto dto);
   Future<void> verifyEmail(VerifyEmailDto dto);
   Future<void> resendVerification(String email);
@@ -185,14 +185,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> verifyOtp(VerifyOtpDto dto) async {
+  Future<String> verifyOtp(VerifyOtpDto dto) async {
     try {
       final response = await _dioClient.post(
         ApiConstants.verifyOtp,
         data: dto.toJson(),
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 200) {
+        // Return the resetToken from the response
+        return response.data['resetToken'] as String;
+      } else {
         throw ServerException(
           response.data['message'] ?? 'Xác thực OTP thất bại',
           response.statusCode,
